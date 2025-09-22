@@ -1,0 +1,26 @@
+{
+  "user_id": "user001",
+  "date": "2025-09-22",
+  "scheduled_todos": {
+    "집안일": [
+      {"task": "방 청소하기", "completed": false},
+      {"task": "쓰레기 버리기", "completed": true},
+      {"task": "화분 물주기", "completed": false}
+    ],
+    "취업준비": [
+      {"task": "포트폴리오 정리하기", "completed": false},
+      {"task": "자기소개서 수정하기", "completed": true}
+    ],
+    "운동": [
+      {"task": "요가하기", "completed": false},
+      {"task": "스트레칭하기", "completed": false}
+    ],
+    "자기계발": [
+      {"task": "독서하기", "completed": false},
+      {"task": "명상하기", "completed": true}
+    ],
+    "공부": [
+      {"task": "알고리즘 문제 풀기", "completed": false}
+    ]
+  }
+}
