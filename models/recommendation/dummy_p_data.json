@@ -1,0 +1,136 @@
+[
+  {
+    "user_id": "user001",
+    "date": "2025-09-15",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true},
+        {"task": "빨래하기", "completed": true}
+      ],
+      "취업준비": [
+        {"task": "이력서 수정하기", "completed": true}
+      ],
+      "운동": [
+        {"task": "산책하기", "completed": true}
+      ],
+      "공부": [
+        {"task": "파이썬 강의 듣기", "completed": true},
+        {"task": "영어 단어 암기", "completed": true}
+      ]
+    }
+  },
+  {
+    "user_id": "user001",
+    "date": "2025-09-16",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true}
+      ],
+      "취업준비": [
+        {"task": "면접 준비하기", "completed": true}
+      ],
+      "운동": [
+        {"task": "헬스장 가기", "completed": true},
+        {"task": "산책하기", "completed": true}
+      ],
+      "공부": [
+        {"task": "영어 단어 암기", "completed": true}
+      ]
+    }
+  },
+  {
+    "user_id": "user001",
+    "date": "2025-09-17",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true},
+        {"task": "빨래하기", "completed": true}
+      ],
+      "취업준비": [
+        {"task": "이력서 수정하기", "completed": true}
+      ],
+      "운동": [
+        {"task": "산책하기", "completed": true}
+      ],
+      "공부": [
+        {"task": "파이썬 강의 듣기", "completed": true}
+      ]
+    }
+  },
+  {
+    "user_id": "user001",
+    "date": "2025-09-18",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true}
+      ],
+      "운동": [
+        {"task": "헬스장 가기", "completed": true},
+        {"task": "산책하기", "completed": true}
+      ],
+      "공부": [
+        {"task": "파이썬 강의 듣기", "completed": true},
+        {"task": "영어 단어 암기", "completed": true}
+      ],
+      "자기계발": [
+        {"task": "독서하기", "completed": true}
+      ]
+    }
+  },
+  {
+    "user_id": "user001",
+    "date": "2025-09-19",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true},
+        {"task": "빨래하기", "completed": true}
+      ],
+      "취업준비": [
+        {"task": "면접 준비하기", "completed": true}
+      ],
+      "운동": [
+        {"task": "산책하기", "completed": true}
+      ]
+    }
+  },
+  {
+    "user_id": "user001",
+    "date": "2025-09-20",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true}
+      ],
+      "취업준비": [
+        {"task": "이력서 수정하기", "completed": true},
+        {"task": "포트폴리오 작성하기", "completed": true}
+      ],
+      "운동": [
+        {"task": "헬스장 가기", "completed": true},
+        {"task": "산책하기", "completed": true}
+      ],
+      "공부": [
+        {"task": "영어 단어 암기", "completed": true}
+      ]
+    }
+  },
+  {
+    "user_id": "user001",
+    "date": "2025-09-21",
+    "completed_todos": {
+      "집안일": [
+        {"task": "설거지하기", "completed": true},
+        {"task": "빨래하기", "completed": true},
+        {"task": "청소기 돌리기", "completed": true}
+      ],
+      "운동": [
+        {"task": "산책하기", "completed": true}
+      ],
+      "공부": [
+        {"task": "파이썬 강의 듣기", "completed": true}
+      ],
+      "자기계발": [
+        {"task": "일기 쓰기", "completed": true}
+      ]
+    }
+  }
+]
