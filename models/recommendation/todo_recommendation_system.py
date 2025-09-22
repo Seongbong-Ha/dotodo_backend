@@ -56,6 +56,8 @@ class TodoRecommendationSystem:
 오늘 예정된 할일:
 {json.dumps(h_data, ensure_ascii=False, indent=2)}
 
+**중요: 오늘 이미 예정된 할일과 중복되지 않는 새로운 할일만 추천해주세요.**
+
 다음 카테고리에서 추천해주세요: 집안일, 취업준비, 운동, 공부, 자기계발
 
 응답은 반드시 다음 JSON 형식으로만 주세요:
@@ -91,6 +93,8 @@ class TodoRecommendationSystem:
 
 첫 번째 추천 결과:
 {json.dumps(first_recommendations, ensure_ascii=False, indent=2)}
+
+**중요: 오늘 이미 예정된 할일과 중복되지 않는 추천만 최종 선별해주세요.**
 
 응답은 반드시 다음 JSON 형식으로만 주세요:
 {{
