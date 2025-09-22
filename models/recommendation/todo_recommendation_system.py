@@ -115,20 +115,26 @@ class TodoRecommendationSystem:
     
     def generate_final_output(self, final_recommendations: List[Dict]) -> Dict[str, Any]:
         """최종 출력 JSON 생성"""
-        final_output = {
-            "user_id": "user001",
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "recommendations": []
-        }
-        
+        recommendations_without_reason = []
+        individual_reasons = []
+    
         for rec in final_recommendations:
-            final_output['recommendations'].append({
+            recommendations_without_reason.append({
                 "category": rec['category'],
                 "task": rec['task'],
-                "reason": rec['reason'],
                 "completed": False
             })
-        
+            individual_reasons.append(f"• {rec['category']} - {rec['task']}: {rec['reason']}")
+    
+        overall_reason = "오늘의 추천 할일들입니다:\n" + "\n".join(individual_reasons)
+
+        final_output = {
+         "user_id": "user001",
+         "date": datetime.now().strftime("%Y-%m-%d"),
+         "recommendations": recommendations_without_reason,
+            "reason": overall_reason
+        }
+    
         return final_output
     
     def save_json_file(self, data: Dict, filename: str) -> None:
