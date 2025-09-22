@@ -56,6 +56,8 @@ class TodoRecommendationSystem:
 오늘 예정된 할일:
 {json.dumps(h_data, ensure_ascii=False, indent=2)}
 
+**중요: 오늘 이미 예정된 할일과 중복되지 않는 새로운 할일만 추천해주세요.**
+
 다음 카테고리에서 추천해주세요: 집안일, 취업준비, 운동, 공부, 자기계발
 
 응답은 반드시 다음 JSON 형식으로만 주세요:
@@ -92,6 +94,8 @@ class TodoRecommendationSystem:
 첫 번째 추천 결과:
 {json.dumps(first_recommendations, ensure_ascii=False, indent=2)}
 
+**중요: 오늘 이미 예정된 할일과 중복되지 않는 추천만 최종 선별해주세요.**
+
 응답은 반드시 다음 JSON 형식으로만 주세요:
 {{
     "final_recommendations": [
@@ -115,20 +119,26 @@ class TodoRecommendationSystem:
     
     def generate_final_output(self, final_recommendations: List[Dict]) -> Dict[str, Any]:
         """최종 출력 JSON 생성"""
-        final_output = {
-            "user_id": "user001",
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "recommendations": []
-        }
-        
+        recommendations_without_reason = []
+        individual_reasons = []
+    
         for rec in final_recommendations:
-            final_output['recommendations'].append({
+            recommendations_without_reason.append({
                 "category": rec['category'],
                 "task": rec['task'],
-                "reason": rec['reason'],
                 "completed": False
             })
-        
+            individual_reasons.append(f"• {rec['category']} - {rec['task']}: {rec['reason']}")
+    
+        overall_reason = "오늘의 추천 할일들입니다:\n" + "\n".join(individual_reasons)
+
+        final_output = {
+         "user_id": "user001",
+         "date": datetime.now().strftime("%Y-%m-%d"),
+         "recommendations": recommendations_without_reason,
+            "reason": overall_reason
+        }
+    
         return final_output
     
     def save_json_file(self, data: Dict, filename: str) -> None:
