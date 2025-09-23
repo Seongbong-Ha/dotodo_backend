@@ -13,7 +13,7 @@ class Todo(Base):
     completed = Column(Boolean, default=False)
     scheduled_date = Column(Date)
     completed_at = Column(DateTime)
-    source = Column(String(20))  # STT/recommendation
+    source = Column(String(20))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -34,7 +34,7 @@ class UserEvent(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String(50), index=True, nullable=False)
     event_type = Column(String(100), nullable=False)
-    target_type = Column(String(50))  # todo/recommendation
+    target_type = Column(String(50))
     target_id = Column(Integer)
     event_data = Column(JSONB)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -48,4 +48,4 @@ class SyncBatch(Base):
     records_synced = Column(Integer)
     sync_started_at = Column(DateTime)
     sync_completed_at = Column(DateTime)
-    status = Column(String(20))  # SUCCESS/FAILED
+    status = Column(String(20))
