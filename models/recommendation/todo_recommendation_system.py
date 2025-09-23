@@ -46,9 +46,9 @@ class TodoRecommendationSystem:
             return {}
     
     def call_gpt_first_recommendation(self, p_data: List[Dict], h_data: Dict) -> str:
-        """첫 번째 GPT 호출 - 10-20개 추천"""
+        """첫 번째 GPT 호출 - 10개 추천"""
         prompt = f"""
-사용자의 지난 1주일 완료된 할일과 오늘 예정된 할일을 분석해서 오늘 추가로 하면 좋을 할일 10-15개를 추천해주세요.
+사용자의 지난 1주일 완료된 할일과 오늘 예정된 할일을 분석해서 오늘 추가로 하면 좋을 할일 10개를 추천해주세요.
 
 지난 1주일 완료된 할일:
 {json.dumps(p_data, ensure_ascii=False, indent=2)}
@@ -57,8 +57,9 @@ class TodoRecommendationSystem:
 {json.dumps(h_data, ensure_ascii=False, indent=2)}
 
 **중요: 오늘 이미 예정된 할일과 중복되지 않는 새로운 할일만 추천해주세요.**
+**할일명에는 시간이나 장소 표기(괄호)를 포함하지 마세요.**
 
-다음 카테고리에서 추천해주세요: 집안일, 취업준비, 운동, 공부, 자기계발
+다음 카테고리에서 추천해주세요: 운동, 공부, 장보기, 업무, 일상, 기타
 
 응답은 반드시 다음 JSON 형식으로만 주세요:
 {{
@@ -71,9 +72,9 @@ class TodoRecommendationSystem:
         
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  # GPT-5가 아직 없으므로 최신 모델 사용
+                model="gpt-5-mini",  
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
+                temperature=1
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -95,6 +96,7 @@ class TodoRecommendationSystem:
 {json.dumps(first_recommendations, ensure_ascii=False, indent=2)}
 
 **중요: 오늘 이미 예정된 할일과 중복되지 않는 추천만 최종 선별해주세요.**
+**할일명에는 시간이나 장소 표기(괄호)를 포함하지 마세요.**
 
 응답은 반드시 다음 JSON 형식으로만 주세요:
 {{
@@ -128,16 +130,16 @@ class TodoRecommendationSystem:
                 "task": rec['task'],
                 "completed": False
             })
-            individual_reasons.append(f"• {rec['category']} - {rec['task']}: {rec['reason']}")
+            individual_reasons.append(f"**{rec['category']}** {rec['task']} 추천 이유는 {rec['reason']}")
     
-        overall_reason = "오늘의 추천 할일들입니다:\n" + "\n".join(individual_reasons)
-
+        overall_reason = "오늘의 추천 할일입니다. " + " ".join(individual_reasons)
+    
         final_output = {
          "user_id": "user001",
          "date": datetime.now().strftime("%Y-%m-%d"),
          "recommendations": recommendations_without_reason,
             "reason": overall_reason
-        }
+     }
     
         return final_output
     
