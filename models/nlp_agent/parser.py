@@ -2,6 +2,7 @@ import re
 import json
 from typing import Dict, Any, List
 from mecab import MeCab
+from datetime import datetime, timedelta
 
 SENTENCE_SPLITTER = re.compile(r'([.?!])\s*|\n')
 
@@ -13,6 +14,37 @@ class Parser:
     def _split_sentences(self, text: str) -> List[str]:
         sentences = [s.strip() for s in SENTENCE_SPLITTER.split(text) if s and s not in ['.', '?', '!']]
         return sentences
+
+    def _get_absolute_date(self, relative_date: str) -> str:
+        """
+        '오늘', '내일', '주말' 등의 상대적 날짜를 YYYY-MM-DD 형식으로 변환합니다.
+        """
+        today = datetime.today()
+        
+        if relative_date == '오늘':
+            return today.strftime('%Y-%m-%d')
+        elif relative_date == '내일':
+            tomorrow = today + timedelta(days=1)
+            return tomorrow.strftime('%Y-%m-%d')
+        elif relative_date == '주말':
+            # 다음 주말(토요일)을 계산 (월요일이 한 주의 시작)
+            days_until_saturday = (5 - today.weekday() + 7) % 7
+            if days_until_saturday == 0: # 오늘이 토요일인 경우
+                days_until_saturday = 7
+            weekend_saturday = today + timedelta(days=days_until_saturday)
+            return weekend_saturday.strftime('%Y-%m-%d')
+        elif relative_date == '이번주':
+            # 이번 주 월요일을 계산
+            days_until_monday = today.weekday()
+            this_monday = today - timedelta(days=days_until_monday)
+            return this_monday.strftime('%Y-%m-%d')
+        elif relative_date == '다음주':
+            # 다음 주 월요일을 계산
+            days_until_monday = (0 - today.weekday() + 7) % 7
+            next_monday = today + timedelta(days=days_until_monday)
+            return next_monday.strftime('%Y-%m-%d')
+        else:
+            return relative_date
 
     def _parse_single_sentence(self, sentence: str) -> Dict[str, Any]:
         print(f"\n[STEP 1] 원본 문장: '{sentence}'")
@@ -26,7 +58,7 @@ class Parser:
         
         for i, (token, pos) in enumerate(parsed_tokens):
             if token in ['내일', '오늘', '이번주', '다음주', '주말']:
-                date = token
+                date = self._get_absolute_date(token)
                 metadata_tokens.add((token, pos))
             elif token in ['아침', '점심', '저녁', '오전', '오후', '새벽']:
                 time = token
@@ -49,7 +81,6 @@ class Parser:
         todo_parts = []
         for token_tuple in parsed_tokens:
             token, pos = token_tuple
-            # 명사, 동사, 형용사만 남기고 나머지는 제외
             if (token_tuple not in metadata_tokens) and (pos.startswith('NN') or pos.startswith('VV') or pos.startswith('VA')):
                 todo_parts.append(token)
         
