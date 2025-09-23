@@ -3,6 +3,7 @@ import json
 from typing import Dict, Any, List
 from mecab import MeCab
 from datetime import datetime, timedelta
+import os
 
 SENTENCE_SPLITTER = re.compile(r'([.?!])\s*|\n')
 
@@ -29,7 +30,7 @@ class Parser:
         elif relative_date == '주말':
             # 다음 주말(토요일)을 계산 (월요일이 한 주의 시작)
             days_until_saturday = (5 - today.weekday() + 7) % 7
-            if days_until_saturday == 0: # 오늘이 토요일인 경우
+            if days_until_saturday == 0:
                 days_until_saturday = 7
             weekend_saturday = today + timedelta(days=days_until_saturday)
             return weekend_saturday.strftime('%Y-%m-%d')
@@ -75,14 +76,26 @@ class Parser:
                     time = f"{token}"
                     metadata_tokens.add((token, pos))
         
-        print(f"[STEP 3] 추출된 날짜: '{date}', 추출된 시간: '{time}'")
-        print(f"[STEP 3] 메타데이터 토큰 튜플: {metadata_tokens}")
-        
+        # 연속된 명사(NNG, NNP)를 결합하여 todo_parts에 추가
         todo_parts = []
-        for token_tuple in parsed_tokens:
-            token, pos = token_tuple
-            if (token_tuple not in metadata_tokens) and (pos.startswith('NN') or pos.startswith('VV') or pos.startswith('VA')):
-                todo_parts.append(token)
+        i = 0
+        while i < len(parsed_tokens):
+            token, pos = parsed_tokens[i]
+            if (token, pos) in metadata_tokens:
+                i += 1
+                continue
+            
+            if pos.startswith('NN'):
+                combined_token = token
+                j = i + 1
+                while j < len(parsed_tokens) and parsed_tokens[j][1].startswith('NN'):
+                    if (parsed_tokens[j][0], parsed_tokens[j][1]) not in metadata_tokens:
+                        combined_token += parsed_tokens[j][0]
+                    j += 1
+                todo_parts.append(combined_token)
+                i = j
+            else:
+                i += 1
         
         todo = ' '.join(todo_parts)
         
