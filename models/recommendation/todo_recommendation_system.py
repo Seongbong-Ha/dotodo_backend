@@ -139,10 +139,13 @@ Respond in Korean using this JSON format:
         # 두 번째 체인 (현대적 방식)
         self.second_chain = self.second_prompt_template | self.llm | self.json_parser
     
+    
     def load_json_file(self, filename: str) -> Any:
         """JSON 파일 로드 (기존 방식 유지)"""
         try:
-            with open(filename, 'r', encoding='utf-8') as f:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(current_dir, filename)
+            with open(file_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
             print(f"파일을 찾을 수 없습니다: {filename}")
@@ -150,7 +153,6 @@ Respond in Korean using this JSON format:
         except json.JSONDecodeError:
             print(f"JSON 파싱 오류: {filename}")
             return None
-    
     def save_json_file(self, data: Dict, filename: str) -> None:
         """JSON 파일 저장 (기존 방식 유지)"""
         try:
@@ -191,8 +193,9 @@ Respond in Korean using this JSON format:
         
         # 1. 데이터 로드
         print("1. 데이터 로딩...")
-        p_data = self.load_json_file('/Users/woody/dotodo/dotodo_backend/models/recommendation/dummy_p_data.json')
-        h_data = self.load_json_file('/Users/woody/dotodo/dotodo_backend/models/recommendation/dummy_h_data.json')
+        combined_data = self.load_json_file('dummy_data.json')
+        p_data = combined_data['p_data']  # 과거 완료된 할일 데이터
+        h_data = combined_data['h_data']  # 오늘 예정된 할일 데이터
         
         if not p_data or not h_data:
             print("❌ 데이터 로딩 실패")
