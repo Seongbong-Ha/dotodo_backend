@@ -189,21 +189,21 @@ class ModelService:
         
         # 키워드별 매핑 (원래 명세에 맞게 확장)
         keyword_mappings = {
-            "청소": {"simplified_text": "청소", "category": "집안일"},
-            "빨래": {"simplified_text": "빨래", "category": "집안일"},
-            "헬스장": {"simplified_text": "헬스장", "category": "운동"},
-            "헬스": {"simplified_text": "헬스장", "category": "운동"},
-            "운동": {"simplified_text": "운동", "category": "운동"},
-            "산책": {"simplified_text": "산책", "category": "운동"},
-            "공부": {"simplified_text": "공부", "category": "공부"},
-            "책": {"simplified_text": "독서", "category": "공부"},
-            "이력서": {"simplified_text": "이력서 작성", "category": "취업준비"},
-            "면접": {"simplified_text": "면접 준비", "category": "취업준비"},
-            "장보기": {"simplified_text": "장보기", "category": "집안일"},
-            "마트": {"simplified_text": "장보기", "category": "집안일"},
-            "친구": {"simplified_text": "친구 약속", "category": "일상"},
-            "저녁": {"simplified_text": "저녁 약속", "category": "일상"},
-            "약속": {"simplified_text": "약속", "category": "일상"}
+            "청소": {"todo": "청소", "category": "집안일"},
+            "빨래": {"todo": "빨래", "category": "집안일"},
+            "헬스장": {"todo": "헬스장", "category": "운동"},
+            "헬스": {"todo": "헬스장", "category": "운동"},
+            "운동": {"todo": "운동", "category": "운동"},
+            "산책": {"todo": "산책", "category": "운동"},
+            "공부": {"todo": "공부", "category": "공부"},
+            "책": {"todo": "독서", "category": "공부"},
+            "이력서": {"todo": "이력서 작성", "category": "취업준비"},
+            "면접": {"todo": "면접 준비", "category": "취업준비"},
+            "장보기": {"todo": "장보기", "category": "집안일"},
+            "마트": {"todo": "장보기", "category": "집안일"},
+            "친구": {"todo": "친구 약속", "category": "일상"},
+            "저녁": {"todo": "저녁 약속", "category": "일상"},
+            "약속": {"todo": "약속", "category": "일상"}
         }
         
         # 시간 키워드 매핑
@@ -231,7 +231,7 @@ class ModelService:
                     break
             
             if not found_mapping:
-                found_mapping = {"simplified_text": sentence, "category": "기타"}
+                found_mapping = {"todo": sentence, "category": "기타"}
             
             # 시간 추출
             found_time = ""
@@ -254,7 +254,7 @@ class ModelService:
             
             todo_item = {
                 "original_sentence": sentence,
-                "simplified_text": found_mapping["simplified_text"],
+                "todo": found_mapping["todo"],
                 "category": found_mapping["category"],
                 "date": found_date,
                 "time": found_time,
@@ -265,7 +265,7 @@ class ModelService:
         
         print(f"🔧 Mock 파싱 결과 ({len(mock_todos)}개 할일):")
         for todo in mock_todos:
-            print(f"  - {todo['simplified_text']} [{todo['category']}] {todo['date']} {todo['time']}")
+            print(f"  - {todo['todo']} [{todo['category']}] {todo['date']} {todo['time']}")
         
         return mock_todos
     

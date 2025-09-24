@@ -36,7 +36,7 @@ async def parse_voice_to_todos(
         for todo_item in todo_items:
             db_todo = Todo(
                 user_id=request.user_id,
-                task=todo_item.simplified_text,
+                task=todo_item.todo,
                 category=todo_item.category,
                 completed=False,
                 source="voice_parsing"
