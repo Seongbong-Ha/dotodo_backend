@@ -16,7 +16,6 @@ class JSONOutputParser(BaseOutputParser):
     def parse(self, text: str) -> Dict[str, Any]:
         """텍스트에서 JSON 부분을 추출하고 파싱"""
         try:
-            # 방법 1: 첫 번째 { 부터 마지막 } 까지
             start_idx = text.find('{')
             end_idx = text.rfind('}')
             
@@ -24,7 +23,6 @@ class JSONOutputParser(BaseOutputParser):
                 json_str = text[start_idx:end_idx+1]
                 return json.loads(json_str)
             
-            # 방법 2: 정규식으로 JSON 블록 추출
             json_match = re.search(r'\{.*\}', text, re.DOTALL)
             if json_match:
                 json_str = json_match.group()
@@ -45,103 +43,101 @@ class LangChainTodoRecommendationSystem:
         if not api_key:
             raise ValueError("OPENAI_API_KEY가 .env 파일에 설정되지 않았습니다.")
         
-        # ChatOpenAI 사용 (최신 권장 방식)
+        # 최적화된 ChatOpenAI 설정
         self.llm = ChatOpenAI(
             openai_api_key=api_key,
-            model_name="gpt-5-mini",
-            temperature=1
+            model_name="gpt-4o-mini",
+            temperature=0.5,
+            max_tokens=600,
+            timeout=15
         )
         
-        # JSON 파서 초기화 (단순화)
         self.json_parser = JSONOutputParser()
-        
-        # 프롬프트 템플릿들 초기화
         self._setup_prompt_templates()
-        
-        # 체인 구성 (최신 방식)
         self._setup_chains()
     
     def _setup_prompt_templates(self):
         """프롬프트 템플릿 설정"""
         
-        # 첫 번째 프롬프트 템플릿 (초기 추천)
-        self.first_prompt_template = PromptTemplate(
+        # 최적화된 단일 프롬프트 템플릿
+        self.single_prompt_template = PromptTemplate(
             input_variables=["p_data", "h_data"],
             template="""
-Analyze the user's completed todos from the past week and today's scheduled todos to recommend 10 additional todos for today.
+You are a todo recommendation expert. Analyze user data and provide 3 final recommendations in a single step.
 
-Past week completed todos:
+PAST WEEK COMPLETED TODOS:
 {p_data}
 
-Today's scheduled todos:
+TODAY'S SCHEDULED TODOS:
 {h_data}
 
-**Important: Only recommend NEW todos that don't overlap with today's scheduled todos.**
-**Todo names should NOT include time/location info in parentheses.**
+ANALYSIS PROCESS (think through this but only output final result):
+1. Pattern Analysis: What categories does user complete frequently?
+2. Gap Identification: What's missing from today's schedule?
+3. Generate 10 candidate recommendations avoiding duplicates with today's todos
+4. Select best 3 considering: feasibility, balance, user patterns
 
-Recommend from these categories: 운동, 공부, 장보기, 업무, 일상, 기타
+RULES:
+- Categories: 운동, 공부, 장보기, 업무, 일상, 기타
+- NO overlap with today's scheduled todos
+- NO time/location details in parentheses
+- Korean reason with **keyword** emphasis and warm tone
 
-{format_instructions}
-
-Respond in this JSON format:
-{{
-    "recommendations": [
-        {{"todo": "todo_name", "category": "category", "reason": "recommendation_reason"}},
-        {{"todo": "todo_name", "category": "category", "reason": "recommendation_reason"}}
-    ]
-}}
-"""
-        )
-        
-        # 두 번째 프롬프트 템플릿 (최종 선별)
-        self.second_prompt_template = PromptTemplate(
-            input_variables=["p_data", "h_data", "first_recommendations"],
-            template="""
-Select the 3 most suitable final recommendations from the analysis of completed todos, scheduled todos, and initial recommendations.
-
-Past week completed todos:
-{p_data}
-
-Today's scheduled todos:
-{h_data}
-
-Initial recommendations:
-{first_recommendations}
-
-**Important: Only select recommendations that don't overlap with scheduled todos.**
-**Todo names should NOT include time/location info in parentheses.**
-
-Korean response rules for 'reason':
-- One sentence per recommended todo
-- Use warm, encouraging tone (e.g., "도움이 될 거예요", "좋을 것 같아요")
-- Bold important keywords using **word** format
-- No dashes(-), colons(:), bullet points, or order indicators
-- No opening phrases like "오늘의 추천 할일입니다"
-
-Respond in Korean using this JSON format:
+OUTPUT ONLY THIS JSON:
 {{
     "final_recommendations": [
         {{"todo": "할일명", "category": "카테고리"}},
-        {{"todo": "할일명", "category": "카테고리"}},
+        {{"todo": "할일명", "category": "카테고리"}}, 
         {{"todo": "할일명", "category": "카테고리"}}
     ],
-    "reason": "할일1에 대한 **핵심 이유**로 도움이 될 거예요. 할일2는 **중요한 부분** 때문에 추천드려요. 할일3을 하시면 **강조할 내용**으로 좋을 것 같아요."
+    "reason": "할일1은 **키워드**로 도움이 될 거예요. 할일2는 **키워드** 때문에 좋을 것 같아요. 할일3을 하시면 **키워드**가 향상될 거예요."
 }}
 """
         )
     
     def _setup_chains(self):
-        """현대적인 LangChain 방식으로 체인 설정"""
-        
-        # 첫 번째 체인 (현대적 방식)
-        self.first_chain = self.first_prompt_template | self.llm | self.json_parser
-        
-        # 두 번째 체인 (현대적 방식)
-        self.second_chain = self.second_prompt_template | self.llm | self.json_parser
+        """체인 설정"""
+        self.single_chain = self.single_prompt_template | self.llm | self.json_parser
     
+    def _compress_past_data(self, p_data: List) -> str:
+        """과거 데이터를 요약해서 프롬프트 크기 줄이기"""
+        category_counts = {}
+        recent_todos = []
+        
+        for day_data in p_data[-3:]:
+            for category, todos in day_data['completed_todos'].items():
+                category_counts[category] = category_counts.get(category, 0) + len(todos)
+                for todo in todos[-2:]:
+                    recent_todos.append(f"{category}: {todo['todo']}")
+        
+        compressed = {
+            "patterns": category_counts,
+            "recent_examples": recent_todos[-10:]
+        }
+        
+        return json.dumps(compressed, ensure_ascii=False, indent=1)
+
+    def _compress_today_data(self, h_data: Dict) -> str:
+        """오늘 데이터 압축"""
+        incomplete_todos = []
+        completed_todos = []
+        
+        for category, todos in h_data['scheduled_todos'].items():
+            for todo in todos:
+                if todo['completed']:
+                    completed_todos.append(f"{category}: {todo['todo']}")
+                else:
+                    incomplete_todos.append(f"{category}: {todo['todo']}")
+        
+        compressed = {
+            "incomplete": incomplete_todos,
+            "completed": completed_todos[:5]
+        }
+        
+        return json.dumps(compressed, ensure_ascii=False, indent=1)
     
     def load_json_file(self, filename: str) -> Any:
-        """JSON 파일 로드 (기존 방식 유지)"""
+        """JSON 파일 로드"""
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             file_path = os.path.join(current_dir, filename)
@@ -153,8 +149,9 @@ Respond in Korean using this JSON format:
         except json.JSONDecodeError:
             print(f"JSON 파싱 오류: {filename}")
             return None
+    
     def save_json_file(self, data: Dict, filename: str) -> None:
-        """JSON 파일 저장 (기존 방식 유지)"""
+        """JSON 파일 저장"""
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
@@ -163,9 +160,7 @@ Respond in Korean using this JSON format:
             print(f"파일 저장 오류: {e}")
     
     def generate_final_output(self, second_result: Dict) -> Dict[str, Any]:
-        """최종 출력 JSON 생성 (새로운 구조)"""
-        
-        # final_recommendations에서 todok와 category만 추출
+        """최종 출력 JSON 생성"""
         recommendations_without_reason = []
         
         for rec in second_result['final_recommendations']:
@@ -175,7 +170,6 @@ Respond in Korean using this JSON format:
                 "completed": False
             })
         
-        # reason을 그대로 사용
         overall_reason = second_result.get('reason', '추천 이유를 가져올 수 없습니다.')
     
         final_output = {
@@ -188,14 +182,14 @@ Respond in Korean using this JSON format:
         return final_output
     
     def run_recommendation_process(self) -> Dict[str, Any]:
-        """전체 추천 프로세스 실행 (단순화된 접근법)"""
-        print("=== LangChain Todo 추천 시스템 시작 ===")
+        """최적화된 단일 프롬프트 추천 프로세스"""
+        print("=== 최적화된 Todo 추천 시스템 시작 ===")
         
         # 1. 데이터 로드
         print("1. 데이터 로딩...")
         combined_data = self.load_json_file('dummy_data.json')
-        p_data = combined_data['p_data']  # 과거 완료된 할일 데이터
-        h_data = combined_data['h_data']  # 오늘 예정된 할일 데이터
+        p_data = combined_data['p_data']
+        h_data = combined_data['h_data']
         
         if not p_data or not h_data:
             print("❌ 데이터 로딩 실패")
@@ -203,67 +197,38 @@ Respond in Korean using this JSON format:
         
         print("✅ 데이터 로딩 완료")
         
-        # 2. 데이터 포맷팅
-        p_data_str = json.dumps(p_data, ensure_ascii=False, indent=2)
-        h_data_str = json.dumps(h_data, ensure_ascii=False, indent=2)
-        format_instructions = self.json_parser.get_format_instructions()
+        # 2. 데이터 압축
+        p_data_compressed = self._compress_past_data(p_data)
+        h_data_compressed = self._compress_today_data(h_data)
         
-        # 3. 첫 번째 체인 실행
-        print("\n2. 첫 번째 추천 체인 실행 중...")
-        
-        try:
-            with get_openai_callback() as cb:
-                first_result = self.first_chain.invoke({
-                    "p_data": p_data_str,
-                    "h_data": h_data_str,
-                    "format_instructions": format_instructions
-                })
-                print(f"✅ 첫 번째 체인 완료 - 토큰 사용: {cb.total_tokens}")
-        
-        except Exception as e:
-            print(f"❌ 첫 번째 체인 실행 오류: {e}")
-            return {}
-        
-        # 4. 첫 번째 결과 저장
-        if first_result:
-            self.save_json_file(first_result, 'first_recommendations.json')
-            print(f"✅ 첫 번째 추천 {len(first_result.get('recommendations', []))}개 추출")
-        else:
-            print("❌ 첫 번째 추천 결과 없음")
-            return {}
-        
-        # 5. 두 번째 체인 실행
-        print("\n3. 두 번째 추천 체인 실행 중...")
-        first_recommendations_str = json.dumps(first_result, ensure_ascii=False, indent=2)
+        # 3. 단일 프롬프트 실행
+        print("\n2. 최적화된 추천 생성 중...")
         
         try:
             with get_openai_callback() as cb:
-                second_result = self.second_chain.invoke({
-                    "p_data": p_data_str,
-                    "h_data": h_data_str,
-                    "first_recommendations": first_recommendations_str,
-                    "format_instructions": format_instructions
+                single_result = self.single_chain.invoke({
+                    "p_data": p_data_compressed,
+                    "h_data": h_data_compressed
                 })
-                print(f"✅ 두 번째 체인 완료 - 토큰 사용: {cb.total_tokens}")
-        
+                print(f"✅ 추천 생성 완료 - 토큰 사용: {cb.total_tokens}")
         except Exception as e:
-            print(f"❌ 두 번째 체인 실행 오류: {e}")
+            print(f"❌ 추천 생성 오류: {e}")
             return {}
         
-        # 6. 최종 결과 처리
-        if not second_result or 'final_recommendations' not in second_result:
-            print("❌ 최종 추천 추출 실패")
+        # 4. 결과 처리
+        if not single_result or 'final_recommendations' not in single_result:
+            print("❌ 추천 추출 실패")
             return {}
         
-        print(f"✅ 최종 추천 {len(second_result['final_recommendations'])}개 추출")
+        print(f"✅ 최종 추천 {len(single_result['final_recommendations'])}개 추출")
         
-        # 7. 최종 출력 생성
-        print("\n4. 최종 출력 생성...")
-        final_output = self.generate_final_output(second_result)
+        # 5. 최종 출력 생성
+        print("\n3. 최종 출력 생성...")
+        final_output = self.generate_final_output(single_result)
         
-        # 8. 파일 저장
-        print("\n5. 결과 저장...")
+        # 6. 파일 저장
+        print("\n4. 결과 저장...")
         self.save_json_file(final_output, 'final_recommendations.json')
         
-        print("\n=== LangChain 추천 시스템 완료 ===")
+        print("\n=== 최적화된 추천 시스템 완료 ===")
         return final_output
