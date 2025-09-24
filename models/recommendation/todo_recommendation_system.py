@@ -68,16 +68,16 @@ class LangChainTodoRecommendationSystem:
         self.first_prompt_template = PromptTemplate(
             input_variables=["p_data", "h_data"],
             template="""
-Analyze the user's completed tasks from the past week and today's scheduled tasks to recommend 10 additional tasks for today.
+Analyze the user's completed todos from the past week and today's scheduled todos to recommend 10 additional todos for today.
 
-Past week completed tasks:
+Past week completed todos:
 {p_data}
 
-Today's scheduled tasks:
+Today's scheduled todos:
 {h_data}
 
-**Important: Only recommend NEW tasks that don't overlap with today's scheduled tasks.**
-**Task names should NOT include time/location info in parentheses.**
+**Important: Only recommend NEW todos that don't overlap with today's scheduled todos.**
+**Todo names should NOT include time/location info in parentheses.**
 
 Recommend from these categories: 운동, 공부, 장보기, 업무, 일상, 기타
 
@@ -86,8 +86,8 @@ Recommend from these categories: 운동, 공부, 장보기, 업무, 일상, 기�
 Respond in this JSON format:
 {{
     "recommendations": [
-        {{"task": "task_name", "category": "category", "reason": "recommendation_reason"}},
-        {{"task": "task_name", "category": "category", "reason": "recommendation_reason"}}
+        {{"todo": "todo_name", "category": "category", "reason": "recommendation_reason"}},
+        {{"todo": "todo_name", "category": "category", "reason": "recommendation_reason"}}
     ]
 }}
 """
@@ -97,22 +97,22 @@ Respond in this JSON format:
         self.second_prompt_template = PromptTemplate(
             input_variables=["p_data", "h_data", "first_recommendations"],
             template="""
-Select the 3 most suitable final recommendations from the analysis of completed tasks, scheduled tasks, and initial recommendations.
+Select the 3 most suitable final recommendations from the analysis of completed todos, scheduled todos, and initial recommendations.
 
-Past week completed tasks:
+Past week completed todos:
 {p_data}
 
-Today's scheduled tasks:
+Today's scheduled todos:
 {h_data}
 
 Initial recommendations:
 {first_recommendations}
 
-**Important: Only select recommendations that don't overlap with scheduled tasks.**
-**Task names should NOT include time/location info in parentheses.**
+**Important: Only select recommendations that don't overlap with scheduled todos.**
+**Todo names should NOT include time/location info in parentheses.**
 
 Korean response rules for 'reason':
-- One sentence per recommended task
+- One sentence per recommended todo
 - Use warm, encouraging tone (e.g., "도움이 될 거예요", "좋을 것 같아요")
 - Bold important keywords using **word** format
 - No dashes(-), colons(:), bullet points, or order indicators
@@ -121,9 +121,9 @@ Korean response rules for 'reason':
 Respond in Korean using this JSON format:
 {{
     "final_recommendations": [
-        {{"task": "할일명", "category": "카테고리"}},
-        {{"task": "할일명", "category": "카테고리"}},
-        {{"task": "할일명", "category": "카테고리"}}
+        {{"todo": "할일명", "category": "카테고리"}},
+        {{"todo": "할일명", "category": "카테고리"}},
+        {{"todo": "할일명", "category": "카테고리"}}
     ],
     "reason": "할일1에 대한 **핵심 이유**로 도움이 될 거예요. 할일2는 **중요한 부분** 때문에 추천드려요. 할일3을 하시면 **강조할 내용**으로 좋을 것 같아요."
 }}
@@ -165,13 +165,13 @@ Respond in Korean using this JSON format:
     def generate_final_output(self, second_result: Dict) -> Dict[str, Any]:
         """최종 출력 JSON 생성 (새로운 구조)"""
         
-        # final_recommendations에서 task와 category만 추출
+        # final_recommendations에서 todok와 category만 추출
         recommendations_without_reason = []
         
         for rec in second_result['final_recommendations']:
             recommendations_without_reason.append({
                 "category": rec['category'],
-                "task": rec['task'],
+                "todo": rec['todo'],
                 "completed": False
             })
         
