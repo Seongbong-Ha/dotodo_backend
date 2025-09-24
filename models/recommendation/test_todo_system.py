@@ -41,8 +41,9 @@ def test_individual_components():
         
         # 1. 파일 로딩 테스트
         print("\n1. 파일 로딩 테스트")
-        p_data = system.load_json_file('/Users/woody/dotodo/dotodo_backend/models/recommendation/dummy_p_data.json')
-        h_data = system.load_json_file('/Users/woody/dotodo/dotodo_backend/models/recommendation/dummy_h_data.json')
+        combined_data = system.load_json_file('/Users/woody/dotodo/dotodo_backend/models/recommendation/dummy_data.json')
+        p_data = combined_data['p_data']  # 과거 완료된 할일 데이터
+        h_data = combined_data['h_data']  # 오늘 예정된 할일 데이터
         
         if p_data and h_data:
             print("✅ 더미 데이터 로딩 성공")
@@ -81,6 +82,8 @@ def test_individual_components():
         
     except Exception as e:
         print(f"❌ 컴포넌트 테스트 오류: {e}")
+        import traceback
+        traceback.print_exc()
 
 def main():
     """메인 테스트 함수"""
