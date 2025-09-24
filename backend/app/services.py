@@ -173,47 +173,100 @@ class ModelService:
         }
     
     def _get_mock_parsed_todos(self, voice_text: str) -> List[Dict[str, Any]]:
-        """Mock 음성 파싱 결과"""
+        """Mock 음성 파싱 결과 - 원래 명세에 맞게 수정"""
         
-        # 간단한 키워드 기반 Mock 파싱
+        # 문장 분리 (간단한 구분자 기반)
+        sentences = []
+        for separator in ['. ', '하고, ', '고, ', '랑 ', '와 ', '하고 ']:
+            if separator in voice_text:
+                sentences = voice_text.split(separator)
+                break
+        
+        if not sentences:
+            sentences = [voice_text]
+        
         mock_todos = []
         
-        # 키워드별 매핑
+        # 키워드별 매핑 (원래 명세에 맞게 확장)
         keyword_mappings = {
-            "청소": {"category": "집안일", "task": "방 청소하기"},
-            "빨래": {"category": "집안일", "task": "빨래하기"},
-            "운동": {"category": "운동", "task": "운동하기"},
-            "헬스": {"category": "운동", "task": "헬스장 가기"},
-            "산책": {"category": "운동", "task": "산책하기"},
-            "공부": {"category": "공부", "task": "공부하기"},
-            "책": {"category": "공부", "task": "책 읽기"},
-            "이력서": {"category": "취업준비", "task": "이력서 작성하기"},
-            "면접": {"category": "취업준비", "task": "면접 준비하기"},
-            "장보기": {"category": "집안일", "task": "장보기"},
-            "마트": {"category": "집안일", "task": "마트 가기"}
+            "청소": {"simplified_text": "청소", "category": "집안일"},
+            "빨래": {"simplified_text": "빨래", "category": "집안일"},
+            "헬스장": {"simplified_text": "헬스장", "category": "운동"},
+            "헬스": {"simplified_text": "헬스장", "category": "운동"},
+            "운동": {"simplified_text": "운동", "category": "운동"},
+            "산책": {"simplified_text": "산책", "category": "운동"},
+            "공부": {"simplified_text": "공부", "category": "공부"},
+            "책": {"simplified_text": "독서", "category": "공부"},
+            "이력서": {"simplified_text": "이력서 작성", "category": "취업준비"},
+            "면접": {"simplified_text": "면접 준비", "category": "취업준비"},
+            "장보기": {"simplified_text": "장보기", "category": "집안일"},
+            "마트": {"simplified_text": "장보기", "category": "집안일"},
+            "친구": {"simplified_text": "친구 약속", "category": "일상"},
+            "저녁": {"simplified_text": "저녁 약속", "category": "일상"},
+            "약속": {"simplified_text": "약속", "category": "일상"}
         }
         
-        # 키워드 매칭
-        found_keywords = []
-        for keyword, mapping in keyword_mappings.items():
-            if keyword in voice_text:
-                found_keywords.append(mapping)
+        # 시간 키워드 매핑
+        time_mappings = {
+            "아침": "아침", "오전": "오전", "점심": "점심", 
+            "오후": "오후", "저녁": "저녁", "밤": "밤", "새벽": "새벽"
+        }
         
-        if found_keywords:
-            mock_todos = found_keywords
-        else:
-            # 키워드가 없으면 원본 텍스트 그대로
-            mock_todos = [{
-                "category": "기타",
-                "task": f"할 일: {voice_text}",
-                "completed": False
-            }]
+        # 날짜 키워드 매핑
+        date_mappings = {
+            "오늘": "2025-09-24", "내일": "2025-09-25", 
+            "주말": "2025-09-28", "이번주": "2025-09-24", "다음주": "2025-10-01"
+        }
         
-        # completed 필드 추가
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+                
+            # 키워드 매칭
+            found_mapping = None
+            for keyword, mapping in keyword_mappings.items():
+                if keyword in sentence:
+                    found_mapping = mapping
+                    break
+            
+            if not found_mapping:
+                found_mapping = {"simplified_text": sentence, "category": "기타"}
+            
+            # 시간 추출
+            found_time = ""
+            for time_keyword, time_value in time_mappings.items():
+                if time_keyword in sentence:
+                    found_time = time_value
+                    break
+            
+            # 날짜 추출
+            found_date = "2025-09-24"  # 기본값
+            for date_keyword, date_value in date_mappings.items():
+                if date_keyword in sentence:
+                    found_date = date_value
+                    break
+            
+            # Mock 임베딩 생성 (실제로는 모델에서 생성)
+            import random
+            random.seed(hash(sentence) % 1000)  # 일관된 결과를 위해 seed 설정
+            mock_embedding = [round(random.uniform(-1, 1), 3) for _ in range(128)]
+            
+            todo_item = {
+                "original_sentence": sentence,
+                "simplified_text": found_mapping["simplified_text"],
+                "category": found_mapping["category"],
+                "date": found_date,
+                "time": found_time,
+                "embedding": mock_embedding
+            }
+            
+            mock_todos.append(todo_item)
+        
+        print(f"🔧 Mock 파싱 결과 ({len(mock_todos)}개 할일):")
         for todo in mock_todos:
-            todo["completed"] = False
+            print(f"  - {todo['simplified_text']} [{todo['category']}] {todo['date']} {todo['time']}")
         
-        print(f"🔧 Mock 파싱 결과: {mock_todos}")
         return mock_todos
     
     def _get_mock_recommendations(self, h_data: Dict) -> Dict[str, Any]:

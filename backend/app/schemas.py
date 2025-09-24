@@ -56,17 +56,25 @@ class RecommendationResponse(BaseModel):
     recommendations: List[RecommendationItem]
     reason: str
 
-# TODO 파싱 관련 스키마들
+# TODO 파싱 관련 스키마들 (원래 명세에 맞게 수정)
 class TodoParseRequest(BaseModel):
     """TODO 파싱 요청"""
     user_id: str
     voice_text: str
 
+class ParsedTodoItem(BaseModel):
+    """파싱된 개별 할일 항목"""
+    original_sentence: str
+    simplified_text: str
+    category: str
+    date: str
+    time: str
+    embedding: List[float]
+
 class TodoParseResponse(BaseModel):
     """TODO 파싱 응답"""
-    user_id: str
-    date: str
-    todos: List[RecommendationItem]
+    success: bool
+    todos: List[ParsedTodoItem]
 
 # 기존 스키마들과 호환성 유지
 class TodoRequest(BaseModel):
