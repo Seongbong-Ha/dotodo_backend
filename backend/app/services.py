@@ -1,4 +1,4 @@
-# import httpx  # 모델 서버 연동 시 사용 (현재 주석 처리)
+import httpx
 import asyncio
 from typing import List, Dict, Any
 from datetime import datetime
@@ -6,15 +6,55 @@ from datetime import datetime
 class ModelService:
     def __init__(self):
         """모델 서비스 초기화"""
-        # 외부 API 연동은 추후 활성화
-        # self.recommendation_api_url = settings.model_reco_url  
-        # self.parse_api_url = settings.model_parse_url
-        print("✅ Mock 모델 서비스 초기화 완료 (외부 API 연동 준비 중)")
+        self.stt_server_url = "http://3.106.20.235:8000/process-text"
+        # self.recommendation_api_url = settings.model_reco_url  # 추후 추천 서버 연동시 사용
+        print("ModelService 초기화 완료 - STT 서버 연동")
+    
+    async def parse_voice_text(self, user_id: str, text: str) -> List[Dict[str, Any]]:
+        """STT 모델 서버에서 음성 텍스트 파싱"""
+        
+        try:
+            payload = {
+                "user_id": user_id,
+                "text": text
+            }
+            
+            print(f"STT 서버로 요청 전송: {payload}")
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self.stt_server_url,
+                    json=payload
+                )
+                response.raise_for_status()
+                
+                stt_result = response.json()
+                print(f"STT 서버 응답: {stt_result}")
+                
+                # STT 응답에 user_id와 id 추가 (우리 서버에서 관리)
+                for i, item in enumerate(stt_result):
+                    item["user_id"] = user_id
+                    item["id"] = i + 1
+                    # simplified_text 필드가 있다면 제거
+                    item.pop("simplified_text", None)
+                
+                print(f"변환된 응답: {stt_result}")
+                return stt_result
+                
+        except httpx.RequestError as e:
+            print(f"STT 서버 요청 오류: {e}")
+            raise Exception(f"STT 서버 연결 실패: {e}")
+        except httpx.HTTPStatusError as e:
+            print(f"STT 서버 HTTP 오류: {e.response.status_code} - {e.response.text}")
+            raise Exception(f"STT 서버 오류: {e.response.status_code}")
+        except Exception as e:
+            print(f"STT 서버 기타 오류: {e}")
+            raise Exception(f"STT 처리 실패: {e}")
     
     async def get_recommendations(self, p_data: List[Dict], h_data: Dict) -> Dict[str, Any]:
-        """추천 생성 - 현재는 Mock 데이터 반환"""
+        """추천 생성 - 현재는 Mock 데이터 반환 (추후 실제 추천 서버 연동 예정)"""
         
-        # === 외부 모델 API 연동 (추후 활성화) ===
+        # === 외부 추천 모델 API 연동 (추후 활성화) ===
         # try:
         #     payload = {
         #         "p_data": p_data,  
@@ -32,73 +72,45 @@ class ModelService:
         #         return result
         #         
         # except Exception as e:
-        #     print(f"모델 API 오류: {e}")
+        #     print(f"추천 모델 API 오류: {e}")
         #     return self._get_mock_recommendations(h_data)
         
-        # 현재는 Mock 데이터만 반환
-        print("🔧 Mock 추천 데이터 생성 중...")
+        # 현재는 Mock 추천 데이터 반환
+        print("Mock 추천 데이터 생성 중...")
+        return self._get_realistic_mock_recommendations(p_data, h_data)
+    
+    def _get_realistic_mock_recommendations(self, p_data: List[Dict], h_data: Dict) -> Dict[str, Any]:
+        """현실적인 Mock 추천 데이터 생성 (추천 서버 연동 전까지 사용)"""
         
         # Pydantic 모델을 dict로 변환
         p_data_dict = []
         for item in p_data:
-            if hasattr(item, 'dict'):  # Pydantic 모델인 경우
+            if hasattr(item, 'dict'):
                 p_data_dict.append(item.dict())
-            else:  # 이미 dict인 경우
+            else:
                 p_data_dict.append(item)
         
         h_data_dict = h_data.dict() if hasattr(h_data, 'dict') else h_data
         
-        return self._get_realistic_mock_recommendations(p_data_dict, h_data_dict)
-    
-    async def parse_voice_text(self, user_id: str, voice_text: str) -> List[Dict[str, Any]]:
-        """음성 텍스트 파싱 - 현재는 Mock 데이터 반환"""
-        
-        # === 외부 모델 API 연동 (추후 활성화) ===
-        # try:
-        #     payload = {
-        #         "user_id": user_id,
-        #         "voice_text": voice_text
-        #     }
-        #     
-        #     async with httpx.AsyncClient(timeout=30.0) as client:
-        #         response = await client.post(
-        #             f"{self.parse_api_url}/parse",
-        #             json=payload
-        #         )
-        #         response.raise_for_status()
-        #         
-        #         result = response.json()
-        #         return result.get("todos", [])
-        #         
-        # except Exception as e:
-        #     print(f"파싱 API 오류: {e}")
-        
-        # 현재는 Mock 파싱 결과 반환
-        print(f"🔧 Mock 파싱: '{voice_text}'")
-        return self._get_mock_parsed_todos(voice_text)
-    
-    def _get_realistic_mock_recommendations(self, p_data: List[Dict], h_data: Dict) -> Dict[str, Any]:
-        """현실적인 Mock 추천 데이터 생성"""
-        
-        # P데이터에서 자주 완료한 카테고리 분석 (Mock)
+        # P데이터에서 자주 완료한 카테고리 분석
         category_counts = {}
-        for day_data in p_data:
+        for day_data in p_data_dict:
             for category, todos in day_data.get("completed_todos", {}).items():
                 completed_count = len([t for t in todos if t.get("completed", False)])
                 category_counts[category] = category_counts.get(category, 0) + completed_count
         
         # H데이터에서 미완료 작업 확인
-        h_scheduled = h_data.get("scheduled_todos", {})
+        h_scheduled = h_data_dict.get("scheduled_todos", {})
         incomplete_categories = []
         for category, todos in h_scheduled.items():
             incomplete_count = len([t for t in todos if not t.get("completed", False)])
             if incomplete_count > 0:
                 incomplete_categories.append(category)
         
-        print(f"📊 분석 결과 - 자주하는 카테고리: {category_counts}")
-        print(f"📊 분석 결과 - 오늘 미완료 카테고리: {incomplete_categories}")
+        print(f"분석 결과 - 자주하는 카테고리: {category_counts}")
+        print(f"분석 결과 - 오늘 미완료 카테고리: {incomplete_categories}")
         
-        # 카테고리별 Mock 추천 풀
+        # 카테고리별 추천 풀
         recommendation_pool = {
             "집안일": [
                 "냉장고 정리하기", "화분 물주기", "침구 정리하기", "신발장 정리하기", 
@@ -170,114 +182,6 @@ class ModelService:
         return {
             "recommendations": recommendations,
             "reason": overall_reason
-        }
-    
-    def _get_mock_parsed_todos(self, voice_text: str) -> List[Dict[str, Any]]:
-        """Mock 음성 파싱 결과 - 원래 명세에 맞게 수정"""
-        
-        # 문장 분리 (간단한 구분자 기반)
-        sentences = []
-        for separator in ['. ', '하고, ', '고, ', '랑 ', '와 ', '하고 ']:
-            if separator in voice_text:
-                sentences = voice_text.split(separator)
-                break
-        
-        if not sentences:
-            sentences = [voice_text]
-        
-        mock_todos = []
-        
-        # 키워드별 매핑 (원래 명세에 맞게 확장)
-        keyword_mappings = {
-            "청소": {"todo": "청소", "category": "집안일"},
-            "빨래": {"todo": "빨래", "category": "집안일"},
-            "헬스장": {"todo": "헬스장", "category": "운동"},
-            "헬스": {"todo": "헬스장", "category": "운동"},
-            "운동": {"todo": "운동", "category": "운동"},
-            "산책": {"todo": "산책", "category": "운동"},
-            "공부": {"todo": "공부", "category": "공부"},
-            "책": {"todo": "독서", "category": "공부"},
-            "이력서": {"todo": "이력서 작성", "category": "취업준비"},
-            "면접": {"todo": "면접 준비", "category": "취업준비"},
-            "장보기": {"todo": "장보기", "category": "집안일"},
-            "마트": {"todo": "장보기", "category": "집안일"},
-            "친구": {"todo": "친구 약속", "category": "일상"},
-            "저녁": {"todo": "저녁 약속", "category": "일상"},
-            "약속": {"todo": "약속", "category": "일상"}
-        }
-        
-        # 시간 키워드 매핑
-        time_mappings = {
-            "아침": "아침", "오전": "오전", "점심": "점심", 
-            "오후": "오후", "저녁": "저녁", "밤": "밤", "새벽": "새벽"
-        }
-        
-        # 날짜 키워드 매핑
-        date_mappings = {
-            "오늘": "2025-09-24", "내일": "2025-09-25", 
-            "주말": "2025-09-28", "이번주": "2025-09-24", "다음주": "2025-10-01"
-        }
-        
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence:
-                continue
-                
-            # 키워드 매칭
-            found_mapping = None
-            for keyword, mapping in keyword_mappings.items():
-                if keyword in sentence:
-                    found_mapping = mapping
-                    break
-            
-            if not found_mapping:
-                found_mapping = {"todo": sentence, "category": "기타"}
-            
-            # 시간 추출
-            found_time = ""
-            for time_keyword, time_value in time_mappings.items():
-                if time_keyword in sentence:
-                    found_time = time_value
-                    break
-            
-            # 날짜 추출
-            found_date = "2025-09-24"  # 기본값
-            for date_keyword, date_value in date_mappings.items():
-                if date_keyword in sentence:
-                    found_date = date_value
-                    break
-            
-            # Mock 임베딩 생성 (실제로는 모델에서 생성)
-            import random
-            random.seed(hash(sentence) % 1000)  # 일관된 결과를 위해 seed 설정
-            mock_embedding = [round(random.uniform(-1, 1), 3) for _ in range(128)]
-            
-            todo_item = {
-                "original_sentence": sentence,
-                "todo": found_mapping["todo"],
-                "category": found_mapping["category"],
-                "date": found_date,
-                "time": found_time,
-                "embedding": mock_embedding
-            }
-            
-            mock_todos.append(todo_item)
-        
-        print(f"🔧 Mock 파싱 결과 ({len(mock_todos)}개 할일):")
-        for todo in mock_todos:
-            print(f"  - {todo['todo']} [{todo['category']}] {todo['date']} {todo['time']}")
-        
-        return mock_todos
-    
-    def _get_mock_recommendations(self, h_data: Dict) -> Dict[str, Any]:
-        """간단한 Mock 추천 (fallback용)"""
-        return {
-            "recommendations": [
-                {"category": "집안일", "task": "책상 정리하기", "completed": False},
-                {"category": "운동", "task": "스트레칭하기", "completed": False},
-                {"category": "자기계발", "task": "일기 쓰기", "completed": False}
-            ],
-            "reason": "기본 Mock 추천입니다."
         }
 
 # 싱글톤 인스턴스

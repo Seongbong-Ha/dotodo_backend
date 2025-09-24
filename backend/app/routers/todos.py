@@ -20,7 +20,7 @@ async def parse_voice_to_todos(
         model_service = get_model_service()
         todos_data = await model_service.parse_voice_text(
             user_id=request.user_id,
-            voice_text=request.voice_text
+            text=request.text
         )
         
         # ParsedTodoItem 스키마로 변환
