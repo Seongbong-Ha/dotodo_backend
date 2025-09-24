@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import todos, recommendations
+from .routers import todos, recommendations, health
 
 app = FastAPI(
     title="DoTodo API",
@@ -10,6 +10,7 @@ app = FastAPI(
 # 라우터 등록
 app.include_router(todos.router)
 app.include_router(recommendations.router)
+app.include_router(health.router)
 
 @app.get("/")
 def root():
