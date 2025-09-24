@@ -65,7 +65,7 @@ class TodoParseRequest(BaseModel):
 class ParsedTodoItem(BaseModel):
     """파싱된 개별 할일 항목"""
     original_sentence: str
-    todo: str
+    simplified_text: str
     category: str
     date: str
     time: str
