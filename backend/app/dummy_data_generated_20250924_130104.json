@@ -1,0 +1,100 @@
+{
+  "p_data": [
+    {
+      "user_id": "user_001",
+      "date": "2025-09-18",
+      "completed_todos": {
+        "운동": [
+          {
+            "todo": "조깅하기",
+            "completed": true
+          }
+        ],
+        "장보기": [
+          {
+            "todo": "채소구매",
+            "completed": true
+          }
+        ]
+      }
+    },
+    {
+      "user_id": "user_001",
+      "date": "2025-09-19",
+      "completed_todos": {
+        "업무": [
+          {
+            "todo": "이메일확인",
+            "completed": true
+          }
+        ],
+        "공부": [
+          {
+            "todo": "책읽기",
+            "completed": true
+          }
+        ]
+      }
+    },
+    {
+      "user_id": "user_001",
+      "date": "2025-09-20",
+      "completed_todos": {
+        "장보기": [
+          {
+            "todo": "우유구매",
+            "completed": true
+          }
+        ],
+        "운동": [
+          {
+            "todo": "요가하기",
+            "completed": true
+          }
+        ]
+      }
+    },
+    {
+      "user_id": "user_001",
+      "date": "2025-09-21",
+      "completed_todos": {
+        "운동": [
+          {
+            "todo": "러닝하기",
+            "completed": true
+          }
+        ],
+        "공부": [
+          {
+            "todo": "소설읽기",
+            "completed": true
+          }
+        ]
+      }
+    }
+  ],
+  "h_data": {
+    "user_id": "user_001",
+    "date": "2025-09-22",
+    "scheduled_todos": {
+      "기타": [
+        {
+          "todo": "계획세우기",
+          "completed": false
+        }
+      ],
+      "업무": [
+        {
+          "todo": "레포트검토",
+          "completed": true
+        }
+      ],
+      "일상": [
+        {
+          "todo": "청소하기",
+          "completed": true
+        }
+      ]
+    }
+  }
+}
