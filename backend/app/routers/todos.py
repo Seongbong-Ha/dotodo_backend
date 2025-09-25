@@ -64,7 +64,7 @@ async def parse_voice_to_todos(
         
 
 # 완료 처리 API
-@router.post("/todos/complete")
+@router.put("/todos/complete")
 async def complete_todo(
     user_id: str,
     id: int,
@@ -151,7 +151,7 @@ async def complete_todo(
         )
         
 # 완료 취소 API
-@router.post("/todos/uncomplete")
+@router.put("/todos/uncomplete")
 async def uncomplete_todo(
     user_id: str,
     id: int,
