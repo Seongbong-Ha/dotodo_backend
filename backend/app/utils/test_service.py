@@ -44,7 +44,7 @@ def get_p_data_from_db(user_id: str, start_date: str, end_date: str) -> List[Dic
             if date_str not in date_grouped:
                 date_grouped[date_str] = {}
             
-            category = todo.category
+            category = todo.category or "기타"
             if category not in date_grouped[date_str]:
                 date_grouped[date_str][category] = []
             
@@ -102,7 +102,7 @@ def get_h_data_from_db(user_id: str, target_date: str) -> Dict:
         # 카테고리별로 그룹핑
         category_grouped = {}
         for todo in todos:
-            category = todo.category
+            category = todo.category or "기타"
             if category not in category_grouped:
                 category_grouped[category] = []
             
@@ -129,25 +129,25 @@ def get_h_data_from_db(user_id: str, target_date: str) -> Dict:
 
 def convert_to_dummy_format(p_data: List[Dict], h_data: Dict) -> Dict:
     """
-    DB에서 조회한 데이터를 dummy_data.json 형태로 변환
+    DB에서 조회한 데이터를 추천 API 호출용 JSON 형태로 변환
     
     Args:
         p_data: 지난 7일 완료된 할일 데이터
         h_data: 오늘 예정된 할일 데이터
     
     Returns:
-        Dict: dummy_data.json 형태의 데이터
+        Dict: 추천 API 호출용 JSON 데이터
     """
     print("🔄 데이터 형태 변환 시작")
     
     try:
-        dummy_data = {
+        api_data = {
             "p_data": p_data,
             "h_data": h_data
         }
         
         print("✅ 데이터 형태 변환 완료")
-        return dummy_data
+        return api_data
         
     except Exception as e:
         print(f"❌ 데이터 변환 오류: {e}")
@@ -156,7 +156,7 @@ def convert_to_dummy_format(p_data: List[Dict], h_data: Dict) -> Dict:
 
 def save_json_file(data: Dict, filename: str, save_path: str = None) -> bool:
     """
-    데이터를 JSON 파일로 저장
+    데이터를 JSON 파일로 저장 (테스트/디버깅용)
     
     Args:
         data: 저장할 데이터
@@ -185,19 +185,22 @@ def save_json_file(data: Dict, filename: str, save_path: str = None) -> bool:
         return False
 
 
-def generate_dummy_data_from_db(user_id: str = "user_001", base_date: str = "2025-09-22") -> Dict:
+def prepare_recommendation_data(user_id: str, base_date: str = None) -> Dict[str, Any]:
     """
-    DB에서 데이터를 조회하여 dummy_data.json 형태로 생성
+    추천 API 호출을 위한 JSON 데이터 준비 (메인 함수)
     
     Args:
         user_id: 사용자 ID (기본값: "user_001")
-        base_date: 기준 날짜 (기본값: "2025-09-22")
+        base_date: 기준 날짜 (기본값: 오늘)
     
     Returns:
-        Dict: 생성된 dummy_data
+        Dict: 추천 API 호출용 JSON 데이터
     """
+    if base_date is None:
+        base_date = datetime.now().strftime("%Y-%m-%d")
+    
     print("=" * 60)
-    print("🚀 DUMMY DATA 생성 시작")
+    print("🚀 추천 데이터 준비 시작")
     print("=" * 60)
     
     try:
@@ -223,33 +226,31 @@ def generate_dummy_data_from_db(user_id: str = "user_001", base_date: str = "202
         total_h_todos = sum(len(todos) for todos in h_data.get("scheduled_todos", {}).values())
         print(f"📅 H_DATA: {total_h_todos}개 할일 조회")
         
-        # 3. 데이터 형태 변환
-        dummy_data = convert_to_dummy_format(p_data, h_data)
+        # 3. 추천 API 호출용 JSON 형태로 변환
+        api_data = convert_to_dummy_format(p_data, h_data)
         
-        # 4. 파일 저장
-        filename = f"dummy_data_generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        save_success = save_json_file(dummy_data, filename)
+        # 4. 파일 저장 (테스트/디버깅용)
+        # filename = f"recommendation_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        # save_success = save_json_file(api_data, filename)
         
         print("-" * 60)
-        if save_success:
-            print("🎉 DUMMY DATA 생성 완료!")
-        else:
-            print("⚠️ 파일 저장 실패했지만 데이터는 생성됨")
+        print("🎉 추천 데이터 준비 완료!")
+        print(f"📦 P_DATA: {len(p_data)}일, H_DATA: {total_h_todos}개 할일")
         print("=" * 60)
         
-        return dummy_data
+        return api_data
         
     except Exception as e:
-        print(f"💥 DUMMY DATA 생성 실패: {e}")
+        print(f"💥 추천 데이터 준비 실패: {e}")
         return {}
 
 
 def print_data_summary(data: Dict) -> None:
     """
-    생성된 데이터의 요약 정보 출력
+    생성된 데이터의 요약 정보 출력 (디버깅용)
     
     Args:
-        data: 생성된 dummy_data
+        data: 요약할 데이터
     """
     if not data:
         print("📋 요약할 데이터가 없습니다.")
@@ -284,6 +285,15 @@ def print_data_summary(data: Dict) -> None:
     print("=" * 50)
 
 
+# 레거시 함수들
+def generate_dummy_data_from_db(user_id: str = "user_001", base_date: str = None) -> Dict:
+    """
+    레거시 함수 - prepare_recommendation_data로 리다이렉트
+    """
+    print("⚠️ 레거시 함수 호출 - prepare_recommendation_data 사용을 권장합니다")
+    return prepare_recommendation_data(user_id, base_date)
+
+
 if __name__ == "__main__":
     """
     테스트 스크립트로 직접 실행할 때 사용
@@ -291,12 +301,12 @@ if __name__ == "__main__":
     print("🧪 테스트 모드로 실행")
     
     # 데이터 생성
-    result = generate_dummy_data_from_db()
+    result = prepare_recommendation_data("user_001", "2025-09-25")
     
     # 결과 요약 출력
     print_data_summary(result)
     
     # 샘플 데이터 출력 (처음 몇 개만)
     if result:
-        print("\n📄 샘플 데이터:")
-        print(json.dumps(result, ensure_ascii=False, indent=2)[:500] + "...")
+        print("\n📄 생성된 JSON 데이터:")
+        print(json.dumps(result, ensure_ascii=False, indent=2)[:1000] + "...")
