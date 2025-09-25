@@ -27,36 +27,36 @@ class TodoParseResponse(BaseModel):
     todos: List[ParsedTodoItem]
 
 # ====================
-# 추천 관련 스키마
+# 추천 관련 스키마 (간소화) - NEW
 # ====================
 
-class TodoItem(BaseModel):
-    """기본 할일 항목"""
-    task: str
-    completed: bool
-
-class PData(BaseModel):
-    """지난 1주일 완료된 할일 데이터"""
+class SimpleRecommendationRequest(BaseModel):
+    """간단한 추천 요청 (user_id만 필요)"""
     user_id: str
-    date: str
-    completed_todos: Dict[str, List[TodoItem]]
+    base_date: Optional[str] = None  # 기준 날짜 (기본값: 오늘)
 
-class HData(BaseModel):
-    """오늘 예정된 할일 데이터"""
-    user_id: str
-    date: str
-    scheduled_todos: Dict[str, List[TodoItem]]
-
-class RecommendationRequest(BaseModel):
-    """추천 요청"""
-    p_data: List[PData]  # 지난 1주일 데이터 (배열)
-    h_data: HData        # 오늘 데이터 (단일 객체)
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user001",
+                "base_date": "2025-09-25"
+            }
+        }
 
 class RecommendationItem(BaseModel):
     """추천 항목"""
     category: str
-    task: str
+    task: str  # 모델 서버 응답에서 'task' 또는 'todo' 필드 지원
     completed: bool = False
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "category": "운동",
+                "task": "스트레칭하기",
+                "completed": False
+            }
+        }
 
 class RecommendationResponse(BaseModel):
     """추천 응답"""
@@ -64,3 +64,58 @@ class RecommendationResponse(BaseModel):
     date: str
     recommendations: List[RecommendationItem]
     reason: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user001",
+                "date": "2025-09-25",
+                "recommendations": [
+                    {
+                        "category": "운동",
+                        "task": "스트레칭하기",
+                        "completed": False
+                    },
+                    {
+                        "category": "공부",
+                        "task": "영어 단어 암기",
+                        "completed": False
+                    }
+                ],
+                "reason": "과거 패턴을 보면 **운동**과 **공부**를 꾸준히 하시는 편이에요."
+            }
+        }
+
+# ====================
+# 레거시 스키마 (기존 클라이언트 호환용)
+# ====================
+
+class TodoItem(BaseModel):
+    """기본 할일 항목 (레거시 호환용)"""
+    todo: str  # DB 모델의 task 필드와 매칭 (레거시에서는 todo 사용)
+    completed: bool
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "todo": "운동하기",
+                "completed": True
+            }
+        }
+
+class PData(BaseModel):
+    """지난 1주일 완료된 할일 데이터 (레거시)"""
+    user_id: str
+    date: str
+    completed_todos: Dict[str, List[TodoItem]]
+
+class HData(BaseModel):
+    """오늘 예정된 할일 데이터 (레거시)"""
+    user_id: str
+    date: str
+    scheduled_todos: Dict[str, List[TodoItem]]
+
+class LegacyRecommendationRequest(BaseModel):
+    """레거시 추천 요청 (클라이언트가 데이터 직접 전송)"""
+    p_data: List[PData]  # 지난 1주일 데이터 (배열)
+    h_data: HData        # 오늘 데이터 (단일 객체)
