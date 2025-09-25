@@ -119,3 +119,34 @@ class LegacyRecommendationRequest(BaseModel):
     """레거시 추천 요청 (클라이언트가 데이터 직접 전송)"""
     p_data: List[PData]  # 지난 1주일 데이터 (배열)
     h_data: HData        # 오늘 데이터 (단일 객체)
+
+class RecommendationItem(BaseModel):
+    task: str
+    category: str
+    scheduled_date: str
+
+class RecommendationRequest(BaseModel):
+    user_id: str
+    recommendations: List[RecommendationItem]
+    reason: Optional[str] = ""
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user001",
+                "recommendations": [
+                    {
+                        "task": "프로그래밍 연습하기",
+                        "category": "공부",
+                        "scheduled_date": "2025-09-24"
+                    },
+                    {
+                        "task": "스트레칭하기",
+                        "category": "운동",
+                        "scheduled_date": "2025-09-24"
+                    }
+                ],
+                "reason": "전체 추천에 대한 종합 설명"
+            }
+        }
+

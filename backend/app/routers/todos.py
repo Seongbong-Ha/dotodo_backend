@@ -7,7 +7,7 @@ from sqlalchemy import and_
 import re
 
 from ..core.database import get_db
-from ..schemas import TodoParseRequest, TodoParseResponse, ParsedTodoItem
+from ..schemas import RecommendationRequest, TodoParseRequest, TodoParseResponse, ParsedTodoItem
 from ..services import get_model_service
 from ..models import Todo
 
@@ -235,3 +235,173 @@ async def uncomplete_todo(
             status_code=500,
             detail=f"완료 취소 실패: {str(e)}"
         )
+        
+# 삭제 처리 API
+@router.delete("/todos/delete")
+async def delete_todo(
+    user_id: str,
+    id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    할일 삭제 처리
+    
+    Args:
+        user_id: 사용자 ID
+        id: 삭제할 할일 ID
+    
+    Returns:
+        삭제 성공/실패 결과
+    """
+    
+    try:
+        print(f"삭제 요청: user_id={user_id}, id={id}")
+        
+        # user_id 정규화 (user001 → user_001)
+        if '_' not in user_id and user_id.startswith('user'):
+            match = re.match(r'^user(\d+)$', user_id)
+            if match:
+                number = match.group(1)
+                normalized_user_id = f"user_{number.zfill(3)}"
+                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
+            else:
+                normalized_user_id = user_id
+        else:
+            normalized_user_id = user_id
+        
+        # DB에서 해당 할일 찾기
+        todo = db.query(Todo).filter(
+            and_(
+                Todo.user_id == normalized_user_id,
+                Todo.id == id
+            )
+        ).first()
+        
+        if not todo:
+            print(f"삭제할 할일을 찾을 수 없음: user_id={user_id}, id={id}")
+            return {"success": "fail"}
+        
+        print(f"삭제할 할일 정보: task={todo.task}, completed={todo.completed}")
+        
+        # DB에서 할일 삭제
+        db.delete(todo)
+        db.commit()
+        
+        print(f"삭제 완료: id={id}")
+        
+        # 삭제 성공 응답
+        return {"success": "success"}
+        
+    except Exception as e:
+        print(f"삭제 오류: {e}")
+        db.rollback()
+        return {"success": "fail"}
+    
+    
+# 추천 추가 API
+@router.post("/todos/recommendations")
+async def add_recommendations(
+    request: RecommendationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    추천 할일을 실제 할일로 추가
+    
+    Args:
+        request: 추천 추가 요청 데이터
+    
+    Returns:
+        추가된 할일들의 정보
+    """
+    
+    try:
+        user_id = request.user_id
+        recommendations = request.recommendations
+        reason = request.reason
+        
+        print(f"추천 추가 요청: user_id={user_id}, {len(recommendations)}개 추천")
+        
+        # user_id 정규화 (user001 → user_001)
+        if '_' not in user_id and user_id.startswith('user'):
+            match = re.match(r'^user(\d+)$', user_id)
+            if match:
+                number = match.group(1)
+                normalized_user_id = f"user_{number.zfill(3)}"
+                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
+            else:
+                normalized_user_id = user_id
+        else:
+            normalized_user_id = user_id
+        
+        added_todos = []
+        
+        # 각 추천을 할일로 변환해서 DB에 저장
+        for i, rec in enumerate(recommendations):
+            try:
+                # 추천 데이터 파싱 (Pydantic 모델이므로 직접 접근)
+                task = rec.task
+                category = rec.category
+                scheduled_date_str = rec.scheduled_date
+                
+                if not task:
+                    print(f"빈 task 무시: {rec}")
+                    continue
+                
+                # scheduled_date 파싱
+                scheduled_date = None
+                if scheduled_date_str:
+                    try:
+                        scheduled_date = datetime.strptime(scheduled_date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        print(f"잘못된 날짜 형식: {scheduled_date_str}")
+                        scheduled_date = None
+                
+                # 새 Todo 생성
+                new_todo = Todo(
+                    user_id=normalized_user_id,
+                    task=task,
+                    category=category,
+                    completed=False,
+                    scheduled_date=scheduled_date,
+                    source="recommendation",
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+                
+                db.add(new_todo)
+                db.flush()  # ID를 얻기 위해 flush
+                
+                added_todos.append({
+                    "id": new_todo.id,
+                    "task": new_todo.task
+                })
+                
+                print(f"추천 할일 추가 완료: id={new_todo.id}, task={task}")
+                
+            except Exception as rec_error:
+                print(f"추천 처리 오류 (무시하고 계속): {rec_error}")
+                continue
+        
+        # 모든 변경사항 커밋
+        db.commit()
+        
+        if not added_todos:
+            return {
+                "success": "fail",
+                "added": []
+            }
+        
+        print(f"총 {len(added_todos)}개 추천 할일 추가 완료")
+        
+        return {
+            "success": "success",
+            "added": added_todos
+        }
+        
+    except Exception as e:
+        print(f"추천 추가 오류: {e}")
+        db.rollback()
+        return {
+            "success": "fail", 
+            "added": []
+        }
