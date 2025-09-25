@@ -31,12 +31,34 @@ class ModelService:
                 
                 stt_result = response.json()
                 print(f"STT 서버 응답: {stt_result}")
+                print(f"STT 서버 응답 타입: {type(stt_result)}")
+                
+                # 응답 형식 정규화
+                if isinstance(stt_result, dict):
+                    # 딕셔너리인 경우 - 여러 가능성 처리
+                    if 'todos' in stt_result or 'results' in stt_result:
+                        # {"todos": [...]} 또는 {"results": [...]} 형태
+                        stt_result = stt_result.get('todos') or stt_result.get('results', [])
+                    else:
+                        # 단일 할일이 딕셔너리로 온 경우
+                        stt_result = [stt_result]
+                    print(f"딕셔너리 응답을 리스트로 변환: {len(stt_result)}개 항목")
+                elif isinstance(stt_result, list):
+                    # 이미 리스트인 경우 - 그대로 사용
+                    print(f"리스트 응답: {len(stt_result)}개 항목")
+                else:
+                    print(f"❌ STT 서버 응답 형식 오류: {type(stt_result)}")
+                    print(f"실제 응답: {stt_result}")
+                    raise Exception(f"STT 서버 응답 형식 오류: 지원하지 않는 {type(stt_result)} 타입")
                 
                 # STT 응답에 user_id와 id 추가
                 for i, item in enumerate(stt_result):
-                    item["user_id"] = user_id
-                    item["id"] = i + 1
-                    item.pop("simplified_text", None)
+                    if isinstance(item, dict):
+                        item["user_id"] = user_id
+                        item["id"] = i + 1
+                        item.pop("simplified_text", None)
+                    else:
+                        print(f"⚠️ STT 응답 항목이 dict가 아닙니다: {type(item)} - {item}")
                 
                 return stt_result
                 
