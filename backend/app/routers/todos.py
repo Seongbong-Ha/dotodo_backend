@@ -235,3 +235,64 @@ async def uncomplete_todo(
             status_code=500,
             detail=f"완료 취소 실패: {str(e)}"
         )
+        
+# 삭제 처리 API
+@router.delete("/todos/delete")
+async def delete_todo(
+    user_id: str,
+    id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    할일 삭제 처리
+    
+    Args:
+        user_id: 사용자 ID
+        id: 삭제할 할일 ID
+    
+    Returns:
+        삭제 성공/실패 결과
+    """
+    
+    try:
+        print(f"삭제 요청: user_id={user_id}, id={id}")
+        
+        # user_id 정규화 (user001 → user_001)
+        if '_' not in user_id and user_id.startswith('user'):
+            match = re.match(r'^user(\d+)$', user_id)
+            if match:
+                number = match.group(1)
+                normalized_user_id = f"user_{number.zfill(3)}"
+                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
+            else:
+                normalized_user_id = user_id
+        else:
+            normalized_user_id = user_id
+        
+        # DB에서 해당 할일 찾기
+        todo = db.query(Todo).filter(
+            and_(
+                Todo.user_id == normalized_user_id,
+                Todo.id == id
+            )
+        ).first()
+        
+        if not todo:
+            print(f"삭제할 할일을 찾을 수 없음: user_id={user_id}, id={id}")
+            return {"success": "fail"}
+        
+        print(f"삭제할 할일 정보: task={todo.task}, completed={todo.completed}")
+        
+        # DB에서 할일 삭제
+        db.delete(todo)
+        db.commit()
+        
+        print(f"삭제 완료: id={id}")
+        
+        # 삭제 성공 응답
+        return {"success": "success"}
+        
+    except Exception as e:
+        print(f"삭제 오류: {e}")
+        db.rollback()
+        return {"success": "fail"}
