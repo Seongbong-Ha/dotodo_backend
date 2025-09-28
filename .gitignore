@@ -212,3 +212,26 @@ __marimo__/
 
 .env*
 !.env.example
+
+# Airflow 관련
+airflow/logs/
+airflow/plugins/
+airflow/__pycache__/
+airflow/*.pid
+airflow/*.log
+airflow/airflow.cfg
+airflow/unittests.cfg
+airflow/webserver_config.py
+
+# Docker 관련
+postgres_data/
+
+# IDE 관련
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS 관련
+.DS_Store
+Thumbs.db

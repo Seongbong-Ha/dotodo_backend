@@ -1,0 +1,194 @@
+version: "3.9"
+
+x-airflow-env: &airflow-env
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@db:5432/airflow
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+  AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+  AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session,airflow.api.auth.backend.basic_auth
+  AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+  # 선택: DAG 스캔 주기
+  AIRFLOW__CORE__DAG_DIR_LIST_INTERVAL: "30"
+
+services:
+  # 1) PostgreSQL (백엔드/에어플로우 공용)
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-dotodo}   # 이미 볼륨이 있다면 무시됨(로그에 표기된 그대로). 
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # 2) (원인 해결) airflow DB 자동 생성 보장
+  db-init-airflow:
+    image: postgres:15
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: /bin/bash
+    command: >
+      -lc "
+      until pg_isready -h db -U $${POSTGRES_USER}; do sleep 1; done;
+      psql -h db -U $${POSTGRES_USER} -tAc \"SELECT 1 FROM pg_database WHERE datname='airflow'\" | grep -q 1
+      || psql -h db -U $${POSTGRES_USER} -c 'CREATE DATABASE airflow';
+      "
+    restart: "no"
+
+  # 3) (권한 해결) airflow 볼륨 권한을 50000:0으로 통일
+  airflow-perms:
+    image: alpine:3.20
+    user: "0:0"
+    volumes:
+      - ./airflow:/opt/airflow
+    entrypoint: /bin/sh
+    command: -lc "chown -R 50000:0 /opt/airflow && chmod -R g+rwX /opt/airflow"
+    restart: "no"
+
+  # 4) 앱 백엔드 (FastAPI)
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    environment:
+      # Airflow REST를 내부 네트워크로 호출
+      AIRFLOW_BASE: ${AIRFLOW_BASE:-http://airflow-webserver:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-api-server:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # 5) Airflow DB 마이그레이션 + 관리자 계정 생성
+  airflow-init:
+    image: apache/airflow:3.0.6-python3.11
+    platform: linux/amd64
+    user: "${AIRFLOW_UID:-50000}:0"   # root 금지(과거 pip root 에러 회피)
+    environment:
+      <<: *airflow-env
+    volumes:
+      - ./airflow:/opt/airflow
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init-airflow:
+        condition: service_completed_successfully
+      airflow-perms:
+        condition: service_completed_successfully
+    # entrypoint: /bin/bash
+    command: ["bash", "-c", "airflow db migrate && airflow users create -u admin -f Admin -l User -r Admin -e admin@example.com -p admin"]
+    # command: >
+    #   bash -c "
+    #   airflow db migrate &&
+    #   airflow users create
+    #     --username admin
+    #     --firstname Admin
+    #     --lastname User
+    #     --role Admin
+    #     --email admin@example.com
+    #     --password admin
+    #   "
+    restart: "no"
+
+  # 6) Airflow Web UI (+ REST)
+  # airflow-webserver:
+  #   image: apache/airflow:3.0.6-python3.11
+  #   platform: linux/amd64
+  #   user: "${AIRFLOW_UID:-50000}:0"
+  #   environment:
+  #     <<: *airflow-env
+  #     # 필요 프로바이더는 실행 서비스에서만 설치(Init에는 금지)
+  #     _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres==6.2.3"
+  #   volumes:
+  #     - ./airflow:/opt/airflow
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     airflow-init:
+  #       condition: service_completed_successfully
+  #   command: webserver
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health | grep -q healthy"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 12
+  #   restart: unless-stopped
+
+  # 7) Airflow 스케줄러
+  airflow-scheduler:
+    image: apache/airflow:3.0.6-python3.11
+    platform: linux/amd64
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      <<: *airflow-env
+      _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres==6.2.3 pandas"
+    volumes:
+      - ./airflow:/opt/airflow
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    command: scheduler
+    restart: unless-stopped
+
+  # 8) Airflow DAG Processor
+  airflow-dag-processor:
+    image: apache/airflow:3.0.6-python3.11
+    platform: linux/amd64
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      <<: *airflow-env
+      _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres==6.2.3 pandas"
+    volumes:
+      - ./airflow:/opt/airflow
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    command: dag-processor
+    restart: unless-stopped
+
+  # (선택) api-server가 꼭 필요하면 아래 블록을 주석해제하고 8081 사용
+  airflow-api-server:
+    image: apache/airflow:3.0.6-python3.11
+    platform: linux/amd64
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      <<: *airflow-env
+      _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-postgres==6.2.3 pandas"
+    volumes:
+      - ./airflow:/opt/airflow
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    command: api-server
+    restart: unless-stopped
+
+volumes:
+  pgdata:
