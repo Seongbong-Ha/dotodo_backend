@@ -27,35 +27,40 @@ async def parse_voice_to_todos(
             text=request.text
         )
         
-        # ParsedTodoItem 스키마로 변환
-        todo_items = [ParsedTodoItem(**todo) for todo in todos_data]
-        
-        # 응답 생성 (원래 명세에 맞게)
-        response = TodoParseResponse(
-            success=True,
-            todos=todo_items
-        )
-        
-        # DB에 파싱된 할일들 저장 (선택사항)
-        for todo_item in todo_items:
+        # DB에 저장하면서 ID를 받아오기
+        saved_todos = []
+        for todo_data in todos_data:
+            # DB Todo 객체 생성
             db_todo = Todo(
                 user_id=request.user_id,
-                task=todo_item.todo,
-                category=todo_item.category,
+                task=todo_data.get('todo'),
+                category=todo_data.get('category'),
                 completed=False,
                 source="voice_parsing"
             )
             db.add(db_todo)
+            db.flush()  # ID를 얻기 위해 flush
+            
+            # 모델 응답 데이터에 DB에서 생성된 ID 추가
+            todo_data['id'] = db_todo.id
+            saved_todos.append(ParsedTodoItem(**todo_data))
         
         try:
             db.commit()
         except Exception as db_error:
-            print(f"DB 저장 오류 (무시하고 계속): {db_error}")
+            print(f"DB 저장 오류: {db_error}")
             db.rollback()
+            # DB 저장 실패시에도 모델 응답은 반환 (ID 없이)
+            saved_todos = [ParsedTodoItem(**todo) for todo in todos_data]
         
-        return response
+        # 응답 생성 (ID 포함)
+        return TodoParseResponse(
+            success=True,
+            todos=saved_todos
+        )
         
     except Exception as e:
+        print(f"파싱 오류: {e}")
         # 실패 시 success: false 반환
         return TodoParseResponse(
             success=False,
