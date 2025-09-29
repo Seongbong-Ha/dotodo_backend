@@ -1,0 +1,12 @@
+dotodo_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: db
+      port: 5432
+      user: postgres
+      pass: postgres
+      dbname: dotodo
+      schema: analytics
+      threads: 4

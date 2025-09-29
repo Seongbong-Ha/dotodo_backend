@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "DoTodo 앱 원천 데이터"
+    database: dotodo
+    schema: public
+    tables:
+      - name: todos
+        description: "사용자 할일 테이블"
+        columns:
+          - name: id
+            description: "할일 고유 ID"
+          - name: user_id
+            description: "사용자 ID"
+          - name: task
+            description: "할일 내용"
+          - name: category
+            description: "카테고리"
+          - name: completed
+            description: "완료 여부"
+          - name: created_at
+            description: "생성 시간"
