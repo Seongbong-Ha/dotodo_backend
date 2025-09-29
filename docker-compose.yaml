@@ -154,5 +154,21 @@ services:
       - "8000:8000"
     restart: unless-stopped
 
+  # 9) dbt 분석 서비스
+  dbt:
+    build:
+      context: ./dbt
+      dockerfile: Dockerfile
+    container_name: dotodo_dbt
+    volumes:
+      - ./dbt:/usr/app
+    environment:
+      - DBT_PROFILES_DIR=/root/.dbt
+    depends_on:
+      db:
+        condition: service_healthy
+    command: tail -f /dev/null
+    restart: unless-stopped
+
 volumes:
   pgdata:
