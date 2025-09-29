@@ -14,6 +14,7 @@ class TodoParseRequest(BaseModel):
 class ParsedTodoItem(BaseModel):
     """파싱된 개별 할일 항목 (클라이언트 응답용)"""
     user_id: str
+    id: Optional[int] = None
     todo: str
     date: str
     time: str
