@@ -84,7 +84,114 @@ backend/
 }
 ```
 
-### 3. GET /health
+### 3. PUT /api/todos/complete
+할일 완료 처리
+
+**요청:**
+```json
+{
+  "user_id": "user001",
+  "id": 123,
+  "task": "방 청소하기"
+}
+```
+
+**응답:**
+```json
+{
+  "completed_todo": {
+    "user_id": "user001",
+    "id": 123,
+    "todo": "방 청소하기",
+    "category": "집안일",
+    "completed": true,
+    "scheduled_date": "2025-09-29",
+    "completed_at": "2025-09-29T10:30:00Z",
+    "source": "voice_parsing"
+  }
+}
+```
+
+### 4. PUT /api/todos/uncomplete
+할일 완료 취소
+
+**요청:**
+```json
+{
+  "user_id": "user001",
+  "id": 123,
+  "task": "방 청소하기"
+}
+```
+
+**응답:**
+```json
+{
+  "completed_todo": {
+    "user_id": "user001",
+    "id": 123,
+    "todo": "방 청소하기",
+    "category": "집안일",
+    "completed": false,
+    "scheduled_date": "2025-09-29",
+    "completed_at": null,
+    "source": "voice_parsing"
+  }
+}
+```
+
+### 5. DELETE /api/todos/delete
+할일 삭제
+
+**요청:**
+```json
+{
+  "user_id": "user001",
+  "id": 123
+}
+```
+
+**응답:**
+```json
+{
+  "success": "success"
+}
+```
+
+### 6. POST /api/todos/recommendations
+추천을 실제 할일로 추가
+
+**요청:**
+```json
+{
+  "user_id": "user001",
+  "recommendations": [
+    {
+      "category": "운동",
+      "task": "스트레칭하기"
+    }
+  ],
+  "reason": "맞춤 추천"
+}
+```
+
+**응답:**
+```json
+{
+  "added_todos": [
+    {
+      "id": 124,
+      "user_id": "user001",
+      "todo": "스트레칭하기",
+      "category": "운동",
+      "completed": false,
+      "source": "recommendation"
+    }
+  ]
+}
+```
+
+### 7. GET /health
 서버 및 DB 상태 확인
 
 **응답:**

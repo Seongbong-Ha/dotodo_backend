@@ -225,8 +225,7 @@ Apache Airflow를 사용하여 데이터 동기화, 분석, 집계 작업을 자
 ```
 airflow/
 ├── dags/
-│   ├── data_sync_dag.py           # 데이터 동기화 DAG
-│   ├── metrics_update_dag.py      # 지표 업데이트 DAG
+│   ├── working_test.py            # 테스트용 DAG
 │   └── dotodo_analytics.py        # 일일 분석 DAG
 ├── plugins/                        # 커스텀 플러그인 (예정)
 └── logs/                          # 실행 로그 (자동 생성)
@@ -234,36 +233,37 @@ airflow/
 
 ## 📅 DAG 목록
 
-### 1. data_sync_dag
-**목적**: 모바일 앱에서 업로드된 데이터 동기화
+### 1. working_test
+**목적**: Airflow 설치 및 설정 테스트
 
-**스케줄**: 매시간 (0분)
-```python
-schedule='0 * * * *'  # Every hour at minute 0
-```
+**스케줄**: 수동 실행만 가능 (schedule=None)
 
 **태스크:**
-- `fetch_pending_data`: DB에서 동기화 대기 중인 데이터 조회
-- `validate_data`: 데이터 유효성 검증
-- `sync_to_warehouse`: 데이터 웨어하우스로 전송
-- `mark_as_synced`: 동기화 완료 표시
+- `hello_world`: "Airflow 3.0 Working!" 메시지 출력
 
-### 2. metrics_update_dag
-**목적**: 사용자별 KPI 및 지표 계산
-
-**스케줄**: 매일 새벽 2시
+**코드:**
 ```python
-schedule='0 2 * * *'  # Daily at 2:00 AM
+from datetime import datetime
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+
+dag = DAG(
+    'working_test',
+    start_date=datetime(2025, 9, 26),
+    schedule=None,
+    catchup=False,
+    tags=['test']
+)
+
+test_task = BashOperator(
+    task_id='hello_world',
+    bash_command='echo "Airflow 3.0 Working!"',
+    dag=dag
+)
 ```
 
-**태스크:**
-- `calculate_completion_rate`: 완료율 계산
-- `calculate_streak`: 연속 달성 일수 계산
-- `update_category_stats`: 카테고리별 통계 업데이트
-- `save_metrics`: 계산된 지표 DB 저장
-
-### 3. dotodo_analytics
-**목적**: 일일 데이터 분석 파이프라인
+### 2. dotodo_analytics
+**목적**: DoTodo 일일 데이터 분석 파이프라인
 
 **스케줄**: 매일 새벽 1시
 ```python
@@ -278,6 +278,15 @@ schedule='0 1 * * *'  # Daily at 1:00 AM
 - `detect_user_patterns`: 사용자 패턴 감지
 - `generate_daily_summary`: 일일 요약 생성
 - `save_analytics_results`: 분석 결과 저장
+
+**태스크 의존성:**
+```
+create_analytics_table 
+  → extract_user_activity 
+    → [calculate_completion_rates, analyze_category_trends, detect_user_patterns] 
+      → generate_daily_summary 
+        → save_analytics_results
+```
 
 ## 🚀 사용 방법
 
@@ -296,13 +305,13 @@ Password: admin
 ### CLI로 DAG 실행
 ```bash
 # 특정 DAG 실행
-docker-compose exec airflow-scheduler airflow dags trigger data_sync_dag
+docker-compose exec airflow-scheduler airflow dags trigger dotodo_analytics
 
 # DAG 목록 확인
 docker-compose exec airflow-scheduler airflow dags list
 
 # DAG 상태 확인
-docker-compose exec airflow-scheduler airflow dags state data_sync_dag
+docker-compose exec airflow-scheduler airflow dags state dotodo_analytics
 ```
 
 ## 🔧 새 DAG 추가하기
@@ -411,10 +420,10 @@ def my_postgres_task():
 
 ```bash
 # DAG 문법 체크
-docker-compose exec airflow-scheduler python /opt/airflow/dags/data_sync_dag.py
+docker-compose exec airflow-scheduler python /opt/airflow/dags/dotodo_analytics.py
 
 # 특정 태스크 테스트
-docker-compose exec airflow-scheduler airflow tasks test data_sync_dag fetch_pending_data 2025-09-29
+docker-compose exec airflow-scheduler airflow tasks test dotodo_analytics extract_user_activity 2025-09-29
 ```
 
 ## 📦 주요 컴포넌트
