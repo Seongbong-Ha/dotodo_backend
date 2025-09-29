@@ -145,6 +145,8 @@ services:
       - .env
     environment:
       AIRFLOW_BASE: ${AIRFLOW_BASE:-http://airflow-webserver:8080}
+    volumes:                    
+      - ./backend:/app
     depends_on:
       airflow-webserver:
         condition: service_healthy
