@@ -188,9 +188,10 @@ def save_json_file(data: Dict, filename: str, save_path: str = None) -> bool:
 def prepare_recommendation_data(user_id: str, base_date: str = None) -> Dict[str, Any]:
     """
     추천 API 호출을 위한 JSON 데이터 준비 (메인 함수)
+    신규 사용자도 지원 - 데이터가 없어도 빈 구조 반환
     
     Args:
-        user_id: 사용자 ID (기본값: "user_001")
+        user_id: 사용자 ID
         base_date: 기준 날짜 (기본값: 오늘)
     
     Returns:
@@ -213,25 +214,36 @@ def prepare_recommendation_data(user_id: str, base_date: str = None) -> Dict[str
         end_date = end_dt.strftime("%Y-%m-%d")
         
         print(f"👤 사용자: {user_id}")
-        print(f"📅 P_DATA 기간: {start_date} ~ {end_date} (지난 7일)")
+        print(f"📅 P_DATA 기간: {start_date} ~ {end_date} (최대 7일)")
         print(f"📅 H_DATA 날짜: {base_date} (오늘)")
         print("-" * 60)
         
-        # 1. P_DATA 조회 (지난 7일 완료된 할일)
+        # 1. P_DATA 조회 - 일주일치가 없으면 있는 만큼만
         p_data = get_p_data_from_db(user_id, start_date, end_date)
+        
+        if len(p_data) == 0:
+            # 일주일치가 없으면 처음부터 어제까지 모든 데이터 조회
+            print("⚠️ 일주일치 데이터 없음 - 전체 기간 조회")
+            p_data = get_all_completed_data(user_id, end_date)
+        
         print(f"📊 P_DATA: {len(p_data)}일의 데이터 조회")
         
-        # 2. H_DATA 조회 (오늘 모든 할일)
+        # 2. H_DATA 조회
         h_data = get_h_data_from_db(user_id, base_date)
         total_h_todos = sum(len(todos) for todos in h_data.get("scheduled_todos", {}).values())
         print(f"📅 H_DATA: {total_h_todos}개 할일 조회")
         
-        # 3. 추천 API 호출용 JSON 형태로 변환
-        api_data = convert_to_dummy_format(p_data, h_data)
+        # 3. 데이터가 비어있어도 구조는 유지
+        if len(p_data) == 0:
+            print("⚠️ 경고: 과거 완료 데이터 없음 (신규 사용자)")
+            p_data = []  # 빈 배열
         
-        # 4. 파일 저장 (테스트/디버깅용)
-        # filename = f"recommendation_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        # save_success = save_json_file(api_data, filename)
+        if total_h_todos == 0:
+            print("⚠️ 경고: 오늘 예정된 할일 없음")
+            # h_data는 이미 빈 scheduled_todos를 가진 구조
+        
+        # 4. 추천 API 호출용 JSON 형태로 변환
+        api_data = convert_to_dummy_format(p_data, h_data)
         
         print("-" * 60)
         print("🎉 추천 데이터 준비 완료!")
@@ -242,7 +254,79 @@ def prepare_recommendation_data(user_id: str, base_date: str = None) -> Dict[str
         
     except Exception as e:
         print(f"💥 추천 데이터 준비 실패: {e}")
-        return {}
+        # 실패해도 빈 구조 반환
+        return {
+            "p_data": [],
+            "h_data": {
+                "user_id": user_id,
+                "date": base_date,
+                "scheduled_todos": {}
+            }
+        }
+
+
+def get_all_completed_data(user_id: str, end_date: str) -> List[Dict]:
+    """
+    사용자의 처음부터 특정 날짜까지 모든 완료된 할일 조회
+    (일주일치 데이터가 없을 때 사용)
+    
+    Args:
+        user_id: 사용자 ID
+        end_date: 종료 날짜 (YYYY-MM-DD)
+    
+    Returns:
+        List[Dict]: p_data 형태의 데이터
+    """
+    print(f"📊 전체 기간 P_DATA 조회: ~ {end_date}")
+    
+    db: Session = SessionLocal()
+    try:
+        # 처음부터 end_date까지 완료된 할일 조회
+        todos = db.query(Todo).filter(
+            and_(
+                Todo.user_id == user_id,
+                Todo.scheduled_date <= end_date,
+                Todo.completed == True
+            )
+        ).order_by(Todo.scheduled_date).all()
+        
+        print(f"✅ 전체 기간 완료 할일 {len(todos)}개 조회됨")
+        
+        # 날짜별로 그룹핑
+        date_grouped = {}
+        for todo in todos:
+            date_str = todo.scheduled_date.strftime("%Y-%m-%d")
+            if date_str not in date_grouped:
+                date_grouped[date_str] = {}
+            
+            category = todo.category or "기타"
+            if category not in date_grouped[date_str]:
+                date_grouped[date_str][category] = []
+            
+            date_grouped[date_str][category].append({
+                "todo": todo.task,
+                "completed": True
+            })
+        
+        # p_data 형태로 변환
+        p_data = []
+        for date_str, categories in date_grouped.items():
+            p_data.append({
+                "user_id": user_id,
+                "date": date_str,
+                "completed_todos": categories
+            })
+        
+        # 날짜순 정렬
+        p_data.sort(key=lambda x: x["date"])
+        
+        return p_data
+        
+    except Exception as e:
+        print(f"❌ 전체 P_DATA 조회 오류: {e}")
+        return []
+    finally:
+        db.close()
 
 
 def print_data_summary(data: Dict) -> None:

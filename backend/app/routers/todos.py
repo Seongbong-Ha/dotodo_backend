@@ -2,7 +2,7 @@ import sys
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import and_
 import re
 
@@ -36,6 +36,7 @@ async def parse_voice_to_todos(
                 task=todo_data.get('todo'),
                 category=todo_data.get('category'),
                 completed=False,
+                scheduled_date=date.today(),
                 source="voice_parsing"
             )
             db.add(db_todo)
@@ -91,17 +92,8 @@ async def complete_todo(
     try:
         print(f"완료 처리 요청: user_id={user_id}, id={id}, task={task}")
         
-        # user_id 정규화 (user001 → user_001)
-        if '_' not in user_id and user_id.startswith('user'):
-            match = re.match(r'^user(\d+)$', user_id)
-            if match:
-                number = match.group(1)
-                normalized_user_id = f"user_{number.zfill(3)}"
-                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
-            else:
-                normalized_user_id = user_id
-        else:
-            normalized_user_id = user_id
+        
+        normalized_user_id = user_id
         
         # DB에서 해당 할일 찾기
         todo = db.query(Todo).filter(
@@ -177,17 +169,7 @@ async def uncomplete_todo(
     try:
         print(f"완료 취소 요청: user_id={user_id}, id={id}, task={task}")
         
-        # user_id 정규화 (user001 → user_001)
-        if '_' not in user_id and user_id.startswith('user'):
-            match = re.match(r'^user(\d+)$', user_id)
-            if match:
-                number = match.group(1)
-                normalized_user_id = f"user_{number.zfill(3)}"
-                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
-            else:
-                normalized_user_id = user_id
-        else:
-            normalized_user_id = user_id
+        normalized_user_id = user_id
         
         # DB에서 해당 할일 찾기
         todo = db.query(Todo).filter(
@@ -262,17 +244,8 @@ async def delete_todo(
     try:
         print(f"삭제 요청: user_id={user_id}, id={id}")
         
-        # user_id 정규화 (user001 → user_001)
-        if '_' not in user_id and user_id.startswith('user'):
-            match = re.match(r'^user(\d+)$', user_id)
-            if match:
-                number = match.group(1)
-                normalized_user_id = f"user_{number.zfill(3)}"
-                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
-            else:
-                normalized_user_id = user_id
-        else:
-            normalized_user_id = user_id
+       
+        normalized_user_id = user_id
         
         # DB에서 해당 할일 찾기
         todo = db.query(Todo).filter(

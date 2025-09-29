@@ -21,20 +21,20 @@ def normalize_user_id(user_id: str) -> str:
         user123 → user_123
         user_001 → user_001 (이미 올바른 형식)
     """
-    if not user_id or not user_id.startswith('user'):
-        return user_id
+    # if not user_id or not user_id.startswith('user'):
+    #     return user_id
     
-    # 이미 언더스코어가 있으면 그대로 반환
-    if '_' in user_id:
-        return user_id
+    # # 이미 언더스코어가 있으면 그대로 반환
+    # if '_' in user_id:
+    #     return user_id
     
-    # user001 → user_001 변환
-    match = re.match(r'^user(\d+)$', user_id)
-    if match:
-        number = match.group(1)
-        normalized = f"user_{number.zfill(3)}"  # 3자리로 패딩
-        print(f"🔄 user_id 정규화: {user_id} → {normalized}")
-        return normalized
+    # # user001 → user_001 변환
+    # match = re.match(r'^user(\d+)$', user_id)
+    # if match:
+    #     number = match.group(1)
+    #     normalized = f"user_{number.zfill(3)}"  # 3자리로 패딩
+    #     print(f"🔄 user_id 정규화: {user_id} → {normalized}")
+    #     return normalized
     
     return user_id
 
@@ -66,11 +66,20 @@ async def get_recommendations(
         print(f"📊 DB 데이터 조회: {normalized_user_id}")
         json_data = prepare_recommendation_data(normalized_user_id, base_date)
         
-        if not json_data or not json_data.get('p_data') or not json_data.get('h_data'):
+        if not json_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"사용자 {user_id}의 데이터가 부족합니다. 과거 할일 기록을 확인하세요."
+                status_code=500,
+                detail="추천 데이터 생성 실패"
             )
+        
+        p_data_count = len(json_data.get('p_data', []))
+        h_data_todos = json_data.get('h_data', {}).get('scheduled_todos', {})
+        h_data_count = sum(len(todos) for todos in h_data_todos.values())
+        
+        if p_data_count == 0:
+            print(f"⚠️ 신규 사용자: {user_id} - 과거 데이터 없음")
+        if h_data_count == 0:
+            print(f"⚠️ 오늘 할일 없음: {user_id}")
         
         print(f"✅ JSON 데이터 생성 완료")
         print(f"   - P_DATA: {len(json_data['p_data'])}일")
