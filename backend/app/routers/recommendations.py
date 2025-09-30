@@ -108,24 +108,30 @@ async def get_recommendations(
             model_result = response.json()
             print(f"✅ 모델 서버 응답 성공")
         
-        # 4. DB에 추천 결과 저장 (로깅용)
+        # 4. DB에 추천 결과 저장하고 ID 추가
         try:
             recommendations = model_result.get('recommendations', [])
             if recommendations:
                 print(f"💾 DB에 추천 결과 저장: {len(recommendations)}개")
+        
                 for rec in recommendations:
                     task_text = rec.get('task') or rec.get('todo', '')
                     if task_text:
                         db_recommendation = Recommendation(
-                            user_id=normalized_user_id,
+                            user_id=user_id,
                             recommended_task=task_text,
                             category=rec.get('category', '기타'),
                             reason=model_result.get('reason', '맞춤형 추천')
                         )
                         db.add(db_recommendation)
-                
+                        db.flush()  # ID 즉시 생성
+
+                        # 응답에 recommendation_id 추가
+                        rec['recommendation_id'] = db_recommendation.id
+        
                 db.commit()
-                print(f"✅ DB 저장 완료")
+                print(f"✅ DB 저장 완료 (recommendation_id 포함)")
+        
         except Exception as db_error:
             print(f"⚠️ DB 저장 오류 (무시): {db_error}")
             db.rollback()

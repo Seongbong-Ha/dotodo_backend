@@ -31,8 +31,26 @@ def load_category_summary():
     query = "SELECT * FROM analytics_marts.category_summary ORDER BY total_tasks DESC"
     return pd.read_sql(query, engine)
 
+
+@st.cache_data(ttl=300)
+def load_airflow_analytics():
+    query = """
+    SELECT 
+        analysis_date,
+        total_users,
+        avg_completion_rate,
+        most_popular_category,
+        active_users_last_week,
+        report_data,
+        created_at
+    FROM daily_analytics
+    ORDER BY analysis_date DESC
+    LIMIT 30
+    """
+    return pd.read_sql(query, engine)
+
 # 타이틀
-st.title("📊 DoTodo 사용자 행동 분석 대시보드")
+st.title("DoTodo 사용자 행동 분석 대시보드")
 st.markdown("---")
 
 # 데이터 로드
@@ -134,3 +152,62 @@ try:
 except Exception as e:
     st.error(f"데이터 로드 오류: {e}")
     st.info("dbt 모델이 실행되었는지 확인하세요: `docker-compose exec dbt dbt run`")
+
+
+st.markdown("---")
+st.header("Airflow 일일 분석 리포트")
+
+try:
+    airflow_data = load_airflow_analytics()
+    
+    if not airflow_data.empty:
+        # 최신 분석 날짜
+        latest_date = airflow_data['analysis_date'].iloc[0]
+        st.subheader(f"최신 분석: {latest_date}")
+        
+        # 지표 카드
+        col1, col2, col3 = st.columns(3)
+        latest = airflow_data.iloc[0]
+        
+        with col1:
+            st.metric("분석 기준 사용자 수", f"{latest['total_users']}명")
+        
+        with col2:
+            st.metric("평균 완료율", f"{latest['avg_completion_rate']:.1f}%")
+        
+        with col3:
+            st.metric("인기 카테고리", latest['most_popular_category'])
+        
+        # 시계열 차트
+        st.subheader("일일 분석 추이")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fig_users = px.line(
+                airflow_data,
+                x='analysis_date',
+                y='total_users',
+                labels={'analysis_date': '날짜', 'total_users': '활성 사용자 수'},
+                markers=True
+            )
+            st.plotly_chart(fig_users, use_container_width=True)
+        
+        with col2:
+            fig_completion = px.line(
+                airflow_data,
+                x='analysis_date',
+                y='avg_completion_rate',
+                labels={'analysis_date': '날짜', 'avg_completion_rate': '평균 완료율 (%)'},
+                markers=True
+            )
+            st.plotly_chart(fig_completion, use_container_width=True)
+        
+        # 상세 리포트 (접을 수 있게)
+        with st.expander("상세 분석 데이터"):
+            st.dataframe(airflow_data, use_container_width=True)
+    else:
+        st.info("Airflow 분석 데이터가 아직 생성되지 않았습니다. DAG를 실행하거나 새벽 1시까지 기다려주세요.")
+        
+except Exception as e:
+    st.warning(f"Airflow 분석 데이터를 불러올 수 없습니다: {e}")

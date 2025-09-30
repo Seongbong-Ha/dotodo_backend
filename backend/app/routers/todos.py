@@ -9,7 +9,7 @@ import re
 from ..core.database import get_db
 from ..schemas import RecommendationRequest, TodoParseRequest, TodoParseResponse, ParsedTodoItem
 from ..services import get_model_service
-from ..models import Todo
+from ..models import Todo, Recommendation
 
 router = APIRouter(prefix="/api", tags=["todos"])
 
@@ -276,7 +276,6 @@ async def delete_todo(
         return {"success": "fail"}
     
     
-# 추천 추가 API
 @router.post("/todos/recommendations")
 async def add_recommendations(
     request: RecommendationRequest,
@@ -284,12 +283,6 @@ async def add_recommendations(
 ):
     """
     추천 할일을 실제 할일로 추가
-    
-    Args:
-        request: 추천 추가 요청 데이터
-    
-    Returns:
-        추가된 할일들의 정보
     """
     
     try:
@@ -299,27 +292,35 @@ async def add_recommendations(
         
         print(f"추천 추가 요청: user_id={user_id}, {len(recommendations)}개 추천")
         
-        # user_id 정규화 (user001 → user_001)
-        if '_' not in user_id and user_id.startswith('user'):
-            match = re.match(r'^user(\d+)$', user_id)
-            if match:
-                number = match.group(1)
-                normalized_user_id = f"user_{number.zfill(3)}"
-                print(f"user_id 정규화: {user_id} → {normalized_user_id}")
-            else:
-                normalized_user_id = user_id
-        else:
-            normalized_user_id = user_id
-        
         added_todos = []
         
         # 각 추천을 할일로 변환해서 DB에 저장
         for i, rec in enumerate(recommendations):
             try:
-                # 추천 데이터 파싱 (Pydantic 모델이므로 직접 접근)
-                task = rec.task
-                category = rec.category
-                scheduled_date_str = rec.scheduled_date
+                # recommendation_id 안전하게 가져오기
+                recommendation_id = getattr(rec, 'recommendation_id', None)
+        
+                if recommendation_id:
+                    print(f"recommendation_id로 조회: {recommendation_id}")
+                    db_recommendation = db.query(Recommendation).filter(
+                        Recommendation.id == recommendation_id,
+                        Recommendation.user_id == user_id
+                    ).first()
+            
+                    if db_recommendation:
+                        task = db_recommendation.recommended_task
+                        category = db_recommendation.category
+                        print(f"✅ recommendations 테이블에서 조회 성공: {task}")
+                    else:
+                        print(f"⚠️ recommendation_id {recommendation_id} 없음 - 원본 데이터 사용")
+                        task = rec.task
+                        category = rec.category
+                else:
+                    # recommendation_id가 없으면 프론트에서 보낸 데이터 사용
+                    task = rec.task
+                    category = rec.category
+        
+                scheduled_date_str = getattr(rec, 'scheduled_date', None)
                 
                 if not task:
                     print(f"빈 task 무시: {rec}")
@@ -336,7 +337,7 @@ async def add_recommendations(
                 
                 # 새 Todo 생성
                 new_todo = Todo(
-                    user_id=normalized_user_id,
+                    user_id=user_id,
                     task=task,
                     category=category,
                     completed=False,

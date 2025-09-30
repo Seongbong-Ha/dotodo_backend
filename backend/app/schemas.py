@@ -46,15 +46,19 @@ class SimpleRecommendationRequest(BaseModel):
 
 class RecommendationItem(BaseModel):
     """추천 항목"""
+    recommendation_id: Optional[int] = None
     category: str
     task: str  # 모델 서버 응답에서 'task' 또는 'todo' 필드 지원
+    scheduled_date: Optional[str] = None
     completed: bool = False
 
     class Config:
-        schema_extra = {
+       json_schema_extra = {
             "example": {
+                "recommendation_id": 123,
                 "category": "운동",
                 "task": "스트레칭하기",
+                "scheduled_date": "2025-09-30",
                 "completed": False
             }
         }
